@@ -168,7 +168,7 @@
                     </div>
                 </div>
 
-                <!-- ===== REWARDS SECTION - MOBILE ===== -->
+                <!-- Rewards Section - Mobile -->
                 <div x-show="showRewardsSection && selectedCustomerId" x-cloak class="bg-white rounded-xl shadow-sm border border-gray-200">
                     <div class="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-white">
                         <h2 class="font-semibold text-gray-900">🎁 Available Rewards</h2>
@@ -222,8 +222,15 @@
                                 <div class="flex items-center justify-between">
                                     <div>
                                         <span class="text-sm font-medium text-green-800">✅ Reward Applied</span>
-                                        <p class="text-sm text-green-700 mt-1" x-text="appliedReward.description"></p>
-                                        <p class="text-xs text-green-600">Discount: ₱<span x-text="parseFloat(appliedReward.discount_value || 0).toFixed(2)"></span></p>
+                                        <p class="text-sm text-green-700 mt-1" x-text="appliedReward?.description || 'Reward'"></p>
+                                        <div x-show="appliedReward?.is_percentage || appliedReward?.reward_type === 'percentage_discount'" class="text-xs text-gray-600 mt-1">
+                                            <span x-text="`${parseFloat(appliedReward?.percentage || 0)}% of ₱${parseFloat(orderSummary.subtotal).toFixed(2)}`"></span>
+                                            <span class="text-green-600 font-medium" x-text="` = ₱${(parseFloat(orderSummary.subtotal) * parseFloat(appliedReward?.percentage || 0) / 100).toFixed(2)}`"></span>
+                                        </div>
+                                        <div x-show="!appliedReward?.is_percentage && appliedReward?.reward_type !== 'percentage_discount'" class="text-xs text-gray-600 mt-1">
+                                            <span x-text="`Fixed discount: ₱${parseFloat(appliedReward?.discount_value || 0).toFixed(2)}`"></span>
+                                        </div>
+                                        <p class="text-xs text-green-600">Discounted: ₱<span x-text="parseFloat(appliedReward?.discount_value || 0).toFixed(2)"></span></p>
                                     </div>
                                     <button type="button" class="text-sm text-red-600 hover:text-red-800" @click="removeAppliedReward()">Remove</button>
                                 </div>
@@ -236,7 +243,7 @@
                     </div>
                 </div>
 
-                <!-- ===== CURRENT ORDER SECTION - MOBILE ===== -->
+                <!-- Current Order Section - Mobile -->
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200">
                     <div class="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-[#4A2C1D]/5 to-white">
                         <div class="flex items-center justify-between">
@@ -264,7 +271,6 @@
                                         <div class="flex-1 min-w-0">
                                             <h3 class="font-medium text-gray-900 truncate" x-text="item.name"></h3>
                                             <p class="text-sm text-gray-600 mt-1" x-text="`₱${item.price.toFixed(2)} each`"></p>
-                                            <!-- ===== FROM REWARD BADGE ===== -->
                                             <span x-show="item.from_reward" class="text-xs text-purple-600 font-medium">🎁 From Reward</span>
                                         </div>
                                         <div class="flex items-center gap-2">
@@ -323,41 +329,53 @@
                         </div>
                     </div>
 
-                    <!-- Order Summary -->
+                    <!-- Order Summary - Mobile -->
                     <div class="border-t border-gray-200 p-4 bg-gray-50">
                         <div class="space-y-2 mb-4">
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Subtotal</span>
-                                <span class="font-medium" x-text="`₱${orderSummary.subtotal.toFixed(2)}`"></span>
+                                <span class="font-medium" x-text="`₱${(parseFloat(orderSummary.subtotal) || 0).toFixed(2)}`"></span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Total Discount</span>
-                                <span class="font-medium text-red-600" x-text="`-₱${orderSummary.totalDiscount.toFixed(2)}`"></span>
+                                <span class="font-medium text-red-600" x-text="`-₱${(parseFloat(orderSummary.totalDiscount) || 0).toFixed(2)}`"></span>
                             </div>
-                            <div x-show="appliedReward" class="flex justify-between text-sm text-purple-600">
-                                <span class="text-gray-600">🎁 Reward Discount</span>
-                                <span class="font-medium" x-text="`-₱${orderSummary.rewardDiscount.toFixed(2)}`"></span>
+                            <div x-show="appliedReward" class="flex justify-between text-sm text-purple-600 relative group">
+                                <span class="text-gray-600">🎁 Reward</span>
+                                <div class="text-right">
+                                    <span class="font-medium" x-text="`-₱${(parseFloat(orderSummary.rewardDiscount) || 0).toFixed(2)}`"></span>
+                                    <div class="absolute right-0 bottom-full mb-2 w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                                        <p class="font-semibold mb-1 text-white">Computation:</p>
+                                        <p class="text-gray-300" x-show="appliedReward?.is_percentage || appliedReward?.reward_type === 'percentage_discount'">
+                                            <span x-text="`${parseFloat(appliedReward?.percentage || 0)}% of ₱${parseFloat(orderSummary.subtotal).toFixed(2)}`"></span>
+                                            <span class="text-green-400" x-text="` = ₱${(parseFloat(orderSummary.subtotal) * parseFloat(appliedReward?.percentage || 0) / 100).toFixed(2)}`"></span>
+                                        </p>
+                                        <p class="text-gray-300" x-show="!appliedReward?.is_percentage && appliedReward?.reward_type !== 'percentage_discount'">
+                                            <span x-text="`Fixed discount: ₱${parseFloat(appliedReward?.discount_value || 0).toFixed(2)}`"></span>
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">VAT Sales</span>
-                                <span class="font-medium" x-text="`₱${orderSummary.vatSales.toFixed(2)}`"></span>
+                                <span class="font-medium" x-text="`₱${(parseFloat(orderSummary.vatSales) || 0).toFixed(2)}`"></span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">VAT (12%)</span>
-                                <span class="font-medium" x-text="`₱${orderSummary.vatAmount.toFixed(2)}`"></span>
+                                <span class="font-medium" x-text="`₱${(parseFloat(orderSummary.vatAmount) || 0).toFixed(2)}`"></span>
                             </div>
                         </div>
                         <div class="border-t border-gray-300 pt-3">
                             <div class="flex justify-between items-center">
                                 <span class="text-lg font-bold text-gray-900">Total</span>
-                                <span class="text-2xl font-bold text-[#4A2C1D]" x-text="`₱${orderSummary.total.toFixed(2)}`"></span>
+                                <span class="text-2xl font-bold text-[#4A2C1D]" x-text="`₱${(parseFloat(orderSummary.total) || 0).toFixed(2)}`"></span>
                             </div>
                         </div>
                         <button x-show="cart.length > 0 && !showPayment" @click="showPayment = true" class="w-full mt-4 py-3 bg-gradient-to-r from-[#4A2C1D] to-[#5A3C2D] text-white font-bold rounded-lg hover:from-[#5A3C2D] hover:to-[#6A4C3D] transition-all shadow-sm hover:shadow">Proceed to Payment</button>
                     </div>
                 </div>
 
-                <!-- Payment Section -->
+                <!-- Payment Section - Mobile -->
                 <div x-show="showPayment" x-transition.opacity class="bg-white rounded-xl shadow-sm border border-gray-200">
                     <div class="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-white">
                         <div class="flex items-center justify-between">
@@ -396,42 +414,42 @@
                                 <div class="mb-3">
                                     <label class="block text-sm font-medium mb-2" :class="{ 'text-blue-700': payment.method === '0', 'text-green-700': payment.method === '1', 'text-purple-700': payment.method === '2' }">Amount Received</label>
                                     <input type="number" x-model.number="payment.amountPaid" min="0" step="0.01" @input="validateAmountPaid()" class="w-full p-3 border rounded-lg focus:ring-2 focus:outline-none transition-colors" :class="getAmountPaidClasses()" placeholder="Enter amount received">
-                                    <div x-show="payment.amountPaid > 0" class="mt-2">
+                                    <div x-show="parseFloat(payment.amountPaid) > 0" class="mt-2">
                                         <template x-if="payment.method === '0'">
                                             <div>
-                                                <div x-show="payment.amountPaid < orderSummary.total" class="text-sm text-red-600 font-medium">
+                                                <div x-show="parseFloat(payment.amountPaid) < parseFloat(orderSummary.total)" class="text-sm text-red-600 font-medium">
                                                     <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
-                                                    Amount is less than total. Add ₱<span x-text="(orderSummary.total - payment.amountPaid).toFixed(2)"></span> more.
+                                                    Amount is less than total. Add ₱<span x-text="(parseFloat(orderSummary.total) - parseFloat(payment.amountPaid)).toFixed(2)"></span> more.
                                                 </div>
-                                                <div x-show="payment.amountPaid === orderSummary.total" class="text-sm text-green-600 font-medium">
+                                                <div x-show="parseFloat(payment.amountPaid) >= parseFloat(orderSummary.total)" class="text-sm text-green-600 font-medium">
                                                     <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
-                                                    Exact amount received. No change needed.
+                                                    Amount received. Change: ₱<span x-text="(parseFloat(payment.amountPaid) - parseFloat(orderSummary.total)).toFixed(2)"></span>
                                                 </div>
                                             </div>
                                         </template>
                                         <template x-if="payment.method === '1' || payment.method === '2'">
                                             <div>
-                                                <div x-show="payment.amountPaid < orderSummary.total" class="text-sm text-red-600 font-medium">
+                                                <div x-show="parseFloat(payment.amountPaid) < parseFloat(orderSummary.total)" class="text-sm text-red-600 font-medium">
                                                     <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
-                                                    Please input the exact amount: ₱<span x-text="orderSummary.total.toFixed(2)"></span>
+                                                    Please input the exact amount: ₱<span x-text="(parseFloat(orderSummary.total) || 0).toFixed(2)"></span>
                                                 </div>
-                                                <div x-show="payment.amountPaid === orderSummary.total" class="text-sm text-green-600 font-medium">
+                                                <div x-show="parseFloat(payment.amountPaid) === parseFloat(orderSummary.total)" class="text-sm text-green-600 font-medium">
                                                     <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>
                                                     Exact payment!
                                                 </div>
-                                                <div x-show="payment.amountPaid > orderSummary.total" class="text-sm text-yellow-600 font-medium">
+                                                <div x-show="parseFloat(payment.amountPaid) > parseFloat(orderSummary.total)" class="text-sm text-yellow-600 font-medium">
                                                     <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                                     </svg>
-                                                    For exact payment methods, please input exactly ₱<span x-text="orderSummary.total.toFixed(2)"></span>
+                                                    For exact payment methods, please input exactly ₱<span x-text="(parseFloat(orderSummary.total) || 0).toFixed(2)"></span>
                                                 </div>
                                             </div>
                                         </template>
@@ -441,10 +459,10 @@
                                     <label class="block text-sm font-medium mb-2" :class="{ 'text-green-700': payment.method === '1', 'text-purple-700': payment.method === '2' }">Notes (Optional)</label>
                                     <textarea x-model="payment.notes" class="w-full p-3 border rounded-lg focus:ring-2 focus:outline-none" :class="{ 'border-green-300 focus:ring-green-500 focus:border-green-500': payment.method === '1', 'border-purple-300 focus:ring-purple-500 focus:border-purple-500': payment.method === '2' }" rows="2" placeholder="Enter any notes about this payment..."></textarea>
                                 </div>
-                                <div x-show="payment.method === '0' && payment.amountPaid > orderSummary.total" class="bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg p-3">
+                                <div x-show="payment.method === '0' && parseFloat(payment.amountPaid) > parseFloat(orderSummary.total)" class="bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg p-3">
                                     <div class="flex justify-between items-center">
                                         <span class="text-sm font-medium text-emerald-800">Change Due:</span>
-                                        <span class="text-lg font-bold text-emerald-800" x-text="`₱${change.toFixed(2)}`"></span>
+                                        <span class="text-lg font-bold text-emerald-800" x-text="`₱${(parseFloat(payment.amountPaid) - parseFloat(orderSummary.total)).toFixed(2)}`"></span>
                                     </div>
                                 </div>
                             </div>
@@ -454,7 +472,7 @@
                             <h3 class="font-semibold text-yellow-800 mb-3">Pay Later</h3>
                             <div class="flex items-start gap-3">
                                 <input type="checkbox" x-model="payment.termsAccepted" id="termsAcceptedMobile" class="mt-1 h-4 w-4 text-[#4A2C1D] focus:ring-[#4A2C1D] border-yellow-300 rounded">
-                                <label for="termsAcceptedMobile" class="text-sm text-yellow-700 flex-1">Customer agrees to pay <span x-text="`₱${orderSummary.total.toFixed(2)}`" class="font-bold"></span> later.</label>
+                                <label for="termsAcceptedMobile" class="text-sm text-yellow-700 flex-1">Customer agrees to pay <span x-text="`₱${(parseFloat(orderSummary.total) || 0).toFixed(2)}`" class="font-bold"></span> later.</label>
                             </div>
                         </div>
 
@@ -470,7 +488,7 @@
                     </div>
                 </div>
 
-                <!-- List of Products -->
+                <!-- List of Products - Mobile -->
                 <div class="mt-6">
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         <div class="border-b border-gray-200 px-4 py-3">
@@ -761,7 +779,7 @@
                                     </div>
                                 </div>
 
-                                <!-- ===== REWARDS CARD - DESKTOP ===== -->
+                                <!-- Rewards Card - Desktop -->
                                 <div x-show="showRewardsSection && selectedCustomerId" x-cloak class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col max-h-48">
                                     <div class="border-b border-gray-200 px-4 py-3 bg-gradient-to-r from-purple-50 to-white flex-shrink-0">
                                         <h2 class="font-semibold text-gray-900">🎁 Available Rewards</h2>
@@ -809,8 +827,15 @@
                                                 <div class="flex items-center justify-between">
                                                     <div>
                                                         <span class="text-xs font-medium text-green-800">✅ Applied</span>
-                                                        <p class="text-xs text-green-700 truncate" x-text="appliedReward.description"></p>
-                                                        <p class="text-[10px] text-green-600">-₱<span x-text="parseFloat(appliedReward.discount_value || 0).toFixed(2)"></span></p>
+                                                        <p class="text-xs text-green-700 truncate" x-text="appliedReward?.description || 'Reward'"></p>
+                                                        <div x-show="appliedReward?.is_percentage || appliedReward?.reward_type === 'percentage_discount'" class="text-[10px] text-gray-600 mt-0.5">
+                                                            <span x-text="`${parseFloat(appliedReward?.percentage || 0)}% of ₱${parseFloat(orderSummary.subtotal).toFixed(2)}`"></span>
+                                                            <span class="text-green-600 font-medium" x-text="` = ₱${(parseFloat(orderSummary.subtotal) * parseFloat(appliedReward?.percentage || 0) / 100).toFixed(2)}`"></span>
+                                                        </div>
+                                                        <div x-show="!appliedReward?.is_percentage && appliedReward?.reward_type !== 'percentage_discount'" class="text-[10px] text-gray-600 mt-0.5">
+                                                            <span x-text="`Fixed discount: ₱${parseFloat(appliedReward?.discount_value || 0).toFixed(2)}`"></span>
+                                                        </div>
+                                                        <p class="text-[10px] text-green-600">-₱<span x-text="parseFloat(appliedReward?.discount_value || 0).toFixed(2)"></span></p>
                                                     </div>
                                                     <button type="button" class="text-xs text-red-600 hover:text-red-800" @click="removeAppliedReward()">Remove</button>
                                                 </div>
@@ -853,7 +878,6 @@
                                                         <div class="flex-1 min-w-0">
                                                             <h3 class="font-medium text-gray-900 truncate text-sm" x-text="item.name"></h3>
                                                             <p class="text-xs text-gray-600 mt-0.5" x-text="`₱${item.price.toFixed(2)} each`"></p>
-                                                            <!-- ===== FROM REWARD BADGE ===== -->
                                                             <span x-show="item.from_reward" class="text-[10px] text-purple-600 font-medium">🎁 From Reward</span>
                                                         </div>
                                                         <div class="flex items-center gap-1">
@@ -910,40 +934,53 @@
                                             </template>
                                         </div>
                                     </div>
+                                    <!-- Order Summary - Desktop -->
                                     <div class="border-t border-gray-200 p-3 bg-gray-50 flex-shrink-0">
                                         <div class="space-y-1 mb-2">
                                             <div class="flex justify-between text-xs">
                                                 <span class="text-gray-600">Subtotal</span>
-                                                <span class="font-medium" x-text="`₱${orderSummary.subtotal.toFixed(2)}`"></span>
+                                                <span class="font-medium" x-text="`₱${(parseFloat(orderSummary.subtotal) || 0).toFixed(2)}`"></span>
                                             </div>
                                             <div class="flex justify-between text-xs">
                                                 <span class="text-gray-600">Total Discount</span>
-                                                <span class="font-medium text-red-600" x-text="`-₱${orderSummary.totalDiscount.toFixed(2)}`"></span>
+                                                <span class="font-medium text-red-600" x-text="`-₱${(parseFloat(orderSummary.totalDiscount) || 0).toFixed(2)}`"></span>
                                             </div>
-                                            <div x-show="appliedReward" class="flex justify-between text-xs text-purple-600">
+                                            <div x-show="appliedReward" class="flex justify-between text-xs text-purple-600 relative group">
                                                 <span class="text-gray-600">🎁 Reward</span>
-                                                <span class="font-medium" x-text="`-₱${orderSummary.rewardDiscount.toFixed(2)}`"></span>
+                                                <div class="text-right">
+                                                    <span class="font-medium" x-text="`-₱${(parseFloat(orderSummary.rewardDiscount) || 0).toFixed(2)}`"></span>
+                                                    <div class="absolute right-0 bottom-full mb-2 w-56 p-2.5 bg-gray-800 text-white text-[10px] rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-50">
+                                                        <p class="font-semibold mb-0.5 text-white">Computation:</p>
+                                                        <p class="text-gray-300" x-show="appliedReward?.is_percentage || appliedReward?.reward_type === 'percentage_discount'">
+                                                            <span x-text="`${parseFloat(appliedReward?.percentage || 0)}% of ₱${parseFloat(orderSummary.subtotal).toFixed(2)}`"></span>
+                                                            <span class="text-green-400" x-text="` = ₱${(parseFloat(orderSummary.subtotal) * parseFloat(appliedReward?.percentage || 0) / 100).toFixed(2)}`"></span>
+                                                        </p>
+                                                        <p class="text-gray-300" x-show="!appliedReward?.is_percentage && appliedReward?.reward_type !== 'percentage_discount'">
+                                                            <span x-text="`Fixed discount: ₱${parseFloat(appliedReward?.discount_value || 0).toFixed(2)}`"></span>
+                                                        </p>
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div class="flex justify-between text-xs">
                                                 <span class="text-gray-600">VAT Sales</span>
-                                                <span class="font-medium" x-text="`₱${orderSummary.vatSales.toFixed(2)}`"></span>
+                                                <span class="font-medium" x-text="`₱${(parseFloat(orderSummary.vatSales) || 0).toFixed(2)}`"></span>
                                             </div>
                                             <div class="flex justify-between text-xs">
                                                 <span class="text-gray-600">VAT (12%)</span>
-                                                <span class="font-medium" x-text="`₱${orderSummary.vatAmount.toFixed(2)}`"></span>
+                                                <span class="font-medium" x-text="`₱${(parseFloat(orderSummary.vatAmount) || 0).toFixed(2)}`"></span>
                                             </div>
                                         </div>
                                         <div class="border-t border-gray-300 pt-2">
                                             <div class="flex justify-between items-center">
                                                 <span class="text-sm font-bold text-gray-900">Total</span>
-                                                <span class="text-lg font-bold text-[#4A2C1D]" x-text="`₱${orderSummary.total.toFixed(2)}`"></span>
+                                                <span class="text-lg font-bold text-[#4A2C1D]" x-text="`₱${(parseFloat(orderSummary.total) || 0).toFixed(2)}`"></span>
                                             </div>
                                         </div>
                                         <button x-show="cart.length > 0 && !showPayment" @click="showPayment = true" class="w-full mt-2 py-2 bg-gradient-to-r from-[#4A2C1D] to-[#5A3C2D] text-white font-bold rounded-lg hover:from-[#5A3C2D] hover:to-[#6A4C3D] transition-all shadow-sm hover:shadow text-xs">Proceed to Payment</button>
                                     </div>
                                 </div>
 
-                                <!-- Payment Section -->
+                                <!-- Payment Section - Desktop -->
                                 <div x-show="showPayment" x-cloak x-transition.opacity class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col h-full overflow-hidden">
                                     <div class="border-b border-gray-200 px-4 py-3 bg-gradient-to-r from-blue-50 to-white flex-shrink-0">
                                         <div class="flex items-center justify-between">
@@ -981,42 +1018,42 @@
                                                 <div class="mb-2">
                                                     <label class="block text-xs font-medium mb-1" :class="{ 'text-blue-700': payment.method === '0', 'text-green-700': payment.method === '1', 'text-purple-700': payment.method === '2' }">Amount Received</label>
                                                     <input type="number" x-model.number="payment.amountPaid" min="0" step="0.01" @input="validateAmountPaid()" class="w-full p-2 border rounded-lg focus:ring-2 focus:outline-none transition-colors text-sm" :class="getAmountPaidClasses()" placeholder="Enter amount received">
-                                                    <div x-show="payment.amountPaid >= 0" class="mt-1">
+                                                    <div x-show="parseFloat(payment.amountPaid) >= 0" class="mt-1">
                                                         <template x-if="payment.method === '0'">
                                                             <div>
-                                                                <div x-show="payment.amountPaid < orderSummary.total" class="text-xs text-red-600 font-medium">
+                                                                <div x-show="parseFloat(payment.amountPaid) < parseFloat(orderSummary.total)" class="text-xs text-red-600 font-medium">
                                                                     <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                                     </svg>
-                                                                    Add ₱<span x-text="(orderSummary.total - payment.amountPaid).toFixed(2)"></span> more.
+                                                                    Add ₱<span x-text="(parseFloat(orderSummary.total) - parseFloat(payment.amountPaid)).toFixed(2)"></span> more.
                                                                 </div>
-                                                                <div x-show="payment.amountPaid === orderSummary.total" class="text-xs text-green-600 font-medium">
+                                                                <div x-show="parseFloat(payment.amountPaid) >= parseFloat(orderSummary.total)" class="text-xs text-green-600 font-medium">
                                                                     <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                                     </svg>
-                                                                    Exact amount. No change.
+                                                                    Change: ₱<span x-text="(parseFloat(payment.amountPaid) - parseFloat(orderSummary.total)).toFixed(2)"></span>
                                                                 </div>
                                                             </div>
                                                         </template>
                                                         <template x-if="payment.method === '1' || payment.method === '2'">
                                                             <div>
-                                                                <div x-show="payment.amountPaid < orderSummary.total" class="text-xs text-red-600 font-medium">
+                                                                <div x-show="parseFloat(payment.amountPaid) < parseFloat(orderSummary.total)" class="text-xs text-red-600 font-medium">
                                                                     <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                                     </svg>
-                                                                    Input exactly ₱<span x-text="orderSummary.total.toFixed(2)"></span>
+                                                                    Input exactly ₱<span x-text="(parseFloat(orderSummary.total) || 0).toFixed(2)"></span>
                                                                 </div>
-                                                                <div x-show="payment.amountPaid === orderSummary.total" class="text-xs text-green-600 font-medium">
+                                                                <div x-show="parseFloat(payment.amountPaid) === parseFloat(orderSummary.total)" class="text-xs text-green-600 font-medium">
                                                                     <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                                     </svg>
                                                                     Exact payment received.
                                                                 </div>
-                                                                <div x-show="payment.amountPaid > orderSummary.total" class="text-xs text-yellow-600 font-medium">
+                                                                <div x-show="parseFloat(payment.amountPaid) > parseFloat(orderSummary.total)" class="text-xs text-yellow-600 font-medium">
                                                                     <svg class="w-3 h-3 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.998-.833-2.732 0L4.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                                                     </svg>
-                                                                    Input exactly ₱<span x-text="orderSummary.total.toFixed(2)"></span>
+                                                                    Input exactly ₱<span x-text="(parseFloat(orderSummary.total) || 0).toFixed(2)"></span>
                                                                 </div>
                                                             </div>
                                                         </template>
@@ -1026,10 +1063,10 @@
                                                     <label class="block text-xs font-medium mb-1" :class="{ 'text-green-700': payment.method === '1', 'text-purple-700': payment.method === '2' }">Notes (Optional)</label>
                                                     <textarea x-model="payment.notes" class="w-full p-2 border rounded-lg focus:ring-2 focus:outline-none text-sm" :class="{ 'border-green-300 focus:ring-green-500 focus:border-green-500': payment.method === '1', 'border-purple-300 focus:ring-purple-500 focus:border-purple-500': payment.method === '2' }" rows="2" placeholder="Enter any notes..."></textarea>
                                                 </div>
-                                                <div x-show="payment.method === '0' && payment.amountPaid > orderSummary.total" class="bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg p-2">
+                                                <div x-show="payment.method === '0' && parseFloat(payment.amountPaid) > parseFloat(orderSummary.total)" class="bg-gradient-to-r from-emerald-50 to-emerald-100 border border-emerald-200 rounded-lg p-2">
                                                     <div class="flex justify-between items-center">
                                                         <span class="text-xs font-medium text-emerald-800">Change Due:</span>
-                                                        <span class="text-sm font-bold text-emerald-800" x-text="`₱${change.toFixed(2)}`"></span>
+                                                        <span class="text-sm font-bold text-emerald-800" x-text="`₱${(parseFloat(payment.amountPaid) - parseFloat(orderSummary.total)).toFixed(2)}`"></span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1038,7 +1075,7 @@
                                             <h3 class="font-semibold text-yellow-800 mb-2 text-xs">Pay Later</h3>
                                             <div class="flex items-start gap-2">
                                                 <input type="checkbox" x-model="payment.termsAccepted" id="termsAcceptedDesktop" class="mt-0.5 h-3 w-3 text-[#4A2C1D] focus:ring-[#4A2C1D] border-yellow-300 rounded">
-                                                <label for="termsAcceptedDesktop" class="text-xs text-yellow-700 flex-1">Customer agrees to pay <span x-text="`₱${orderSummary.total.toFixed(2)}`" class="font-bold"></span> later.</label>
+                                                <label for="termsAcceptedDesktop" class="text-xs text-yellow-700 flex-1">Customer agrees to pay <span x-text="`₱${(parseFloat(orderSummary.total) || 0).toFixed(2)}`" class="font-bold"></span> later.</label>
                                             </div>
                                         </div>
                                     </div>
@@ -1080,28 +1117,28 @@
                         <div class="space-y-2 bg-gray-50 p-4 rounded-lg">
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Subtotal</span>
-                                <span class="font-medium" x-text="`₱${orderSummary.subtotal.toFixed(2)}`"></span>
+                                <span class="font-medium" x-text="`₱${(parseFloat(orderSummary.subtotal) || 0).toFixed(2)}`"></span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">Total Discount</span>
-                                <span class="font-medium text-red-600" x-text="`-₱${orderSummary.totalDiscount.toFixed(2)}`"></span>
+                                <span class="font-medium text-red-600" x-text="`-₱${(parseFloat(orderSummary.totalDiscount) || 0).toFixed(2)}`"></span>
                             </div>
                             <div x-show="appliedReward" class="flex justify-between text-sm text-purple-600">
                                 <span class="text-gray-600">🎁 Reward Discount</span>
-                                <span class="font-medium" x-text="`-₱${orderSummary.rewardDiscount.toFixed(2)}`"></span>
+                                <span class="font-medium" x-text="`-₱${(parseFloat(orderSummary.rewardDiscount) || 0).toFixed(2)}`"></span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">VAT Sales</span>
-                                <span class="font-medium" x-text="`₱${orderSummary.vatSales.toFixed(2)}`"></span>
+                                <span class="font-medium" x-text="`₱${(parseFloat(orderSummary.vatSales) || 0).toFixed(2)}`"></span>
                             </div>
                             <div class="flex justify-between text-sm">
                                 <span class="text-gray-600">VAT (12%)</span>
-                                <span class="font-medium" x-text="`₱${orderSummary.vatAmount.toFixed(2)}`"></span>
+                                <span class="font-medium" x-text="`₱${(parseFloat(orderSummary.vatAmount) || 0).toFixed(2)}`"></span>
                             </div>
                             <div class="border-t border-gray-300 pt-2 mt-2">
                                 <div class="flex justify-between items-center">
                                     <span class="font-bold text-gray-900">Total</span>
-                                    <span class="text-lg font-bold text-[#4A2C1D]" x-text="`₱${orderSummary.total.toFixed(2)}`"></span>
+                                    <span class="text-lg font-bold text-[#4A2C1D]" x-text="`₱${(parseFloat(orderSummary.total) || 0).toFixed(2)}`"></span>
                                 </div>
                             </div>
                         </div>
@@ -1153,9 +1190,9 @@
                                 <span class="text-gray-600">Amount Paid:</span>
                                 <span class="font-medium" x-text="`₱${(parseFloat(payment.amountPaid) || 0).toFixed(2)}`"></span>
                             </div>
-                            <div x-show="payment.method === '0' && payment.amountPaid > orderSummary.total" class="flex justify-between items-center pt-2 border-t border-gray-200">
+                            <div x-show="payment.method === '0' && parseFloat(payment.amountPaid) > parseFloat(orderSummary.total)" class="flex justify-between items-center pt-2 border-t border-gray-200">
                                 <span class="text-gray-600">Change Due:</span>
-                                <span class="font-medium text-green-600" x-text="`₱${change.toFixed(2)}`"></span>
+                                <span class="font-medium text-green-600" x-text="`₱${(parseFloat(payment.amountPaid) - parseFloat(orderSummary.total)).toFixed(2)}`"></span>
                             </div>
                             <template x-if="payment.method === '3'">
                                 <div class="flex items-center gap-2 pt-2 border-t border-gray-200">
@@ -1231,10 +1268,21 @@
                 selectedCustomerEmail: '{{ $prefilledCustomer->email ?? '' }}',
                 selectedCustomerContact: '{{ $prefilledCustomer->contact_no ?? '' }}',
                 isCustomerFromCheckin: {{ $prefilledCustomer ? 'true' : 'false' }},
+                
+                // Reward Properties
+                availableRewards: @json($customerRewards ?? []),
+                selectedReward: null,
+                appliedReward: null,
+                rewardsLoading: false,
+                rewardApplying: false,
+                customerRewardId: null,
+                rewardDiscountAmount: 0,
+                rewardVoucherCode: null,
+                showRewardsSection: {{ $prefilledCustomer ? 'true' : 'false' }},
+                
                 payment: {
                     method: '0',
                     amountPaid: '',
-                    gcashRefNo: '',
                     termsAccepted: false,
                     notes: ''
                 },
@@ -1254,17 +1302,6 @@
                     applyReward: '{{ route('sub_one.pos.apply-reward') }}'
                 },
 
-                // ===== REWARD PROPERTIES =====
-                availableRewards: @json($customerRewards ?? []),
-                selectedReward: null,
-                appliedReward: null,
-                rewardsLoading: false,
-                rewardApplying: false,
-                customerRewardId: null,
-                rewardDiscountAmount: 0,
-                rewardVoucherCode: null,
-                showRewardsSection: {{ $prefilledCustomer ? 'true' : 'false' }},
-
                 // Computed properties
                 get filteredProducts() {
                     if (!this.searchTerm) return this.products;
@@ -1279,44 +1316,48 @@
                     const subtotal = this.cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
                     const totalDiscount = this.cart.reduce((sum, item) => sum + this.calculateItemDiscount(item), 0);
                     
-                    // Dynamic client-side recalculation of reward deductions
                     let dynamicRewardDiscount = 0;
-                    if (this.appliedReward) {
-                        if (this.appliedReward.reward_type === 'free_product' || this.appliedReward.reward_type === 'product_discount') {
+                    if (this.appliedReward && this.appliedReward.discount_value !== undefined && this.appliedReward.discount_value !== null) {
+                        const rewardType = this.appliedReward.reward_type || '';
+                        
+                        if (rewardType === 'free_product' || rewardType === 'product_discount') {
                             const rewardProductId = this.appliedReward.product_data?.product_id || this.appliedReward.product_data?.id;
                             const cartItem = this.cart.find(item => item.product_id === rewardProductId);
                             if (cartItem) {
-                                if (this.appliedReward.reward_type === 'free_product') {
-                                    // Discount equals the unit price of the target free product
-                                    dynamicRewardDiscount = this.appliedReward.discount_value || cartItem.price;
-                                } else if (this.appliedReward.reward_type === 'product_discount') {
+                                if (rewardType === 'free_product') {
+                                    dynamicRewardDiscount = this.appliedReward.discount_value || cartItem.price || 0;
+                                } else if (rewardType === 'product_discount') {
                                     if (this.appliedReward.is_percentage) {
-                                        dynamicRewardDiscount = (cartItem.price * this.appliedReward.percentage) / 100;
+                                        const percentage = this.appliedReward.percentage || 0;
+                                        dynamicRewardDiscount = (cartItem.price * percentage) / 100;
                                     } else {
-                                        dynamicRewardDiscount = Math.min(this.appliedReward.discount_value, cartItem.price);
+                                        dynamicRewardDiscount = Math.min(this.appliedReward.discount_value || 0, cartItem.price || 0);
                                     }
                                 }
                             }
-                        } else if (this.appliedReward.reward_type === 'percentage_discount') {
-                            dynamicRewardDiscount = (subtotal * this.appliedReward.percentage) / 100;
+                        } else if (rewardType === 'percentage_discount') {
+                            const percentage = this.appliedReward.percentage || 0;
+                            dynamicRewardDiscount = (subtotal * percentage) / 100;
                         } else {
-                            dynamicRewardDiscount = this.appliedReward.discount_value;
+                            dynamicRewardDiscount = this.appliedReward.discount_value || 0;
                         }
                     }
 
-                    // Keep reward discount bounded safely by remaining balance
-                    const cappedRewardDiscount = Math.min(dynamicRewardDiscount, Math.max(0, subtotal - totalDiscount));
-
-                    const total = Math.max(0, subtotal - totalDiscount - cappedRewardDiscount);
+                    const safeSubtotal = parseFloat(subtotal) || 0;
+                    const safeTotalDiscount = parseFloat(totalDiscount) || 0;
+                    const safeRewardDiscount = Math.min(parseFloat(dynamicRewardDiscount) || 0, Math.max(0, safeSubtotal - safeTotalDiscount));
+                    
+                    const total = Math.max(0, safeSubtotal - safeTotalDiscount - safeRewardDiscount);
                     const vatSales = total / (1 + this.VAT_RATE);
                     const vatAmount = total - vatSales;
+                    
                     return {
-                        subtotal,
-                        totalDiscount,
-                        rewardDiscount: cappedRewardDiscount,
-                        vatSales,
-                        vatAmount,
-                        total
+                        subtotal: safeSubtotal,
+                        totalDiscount: safeTotalDiscount,
+                        rewardDiscount: safeRewardDiscount,
+                        vatSales: isNaN(vatSales) ? 0 : vatSales,
+                        vatAmount: isNaN(vatAmount) ? 0 : vatAmount,
+                        total: isNaN(total) ? 0 : total
                     };
                 },
 
@@ -1362,12 +1403,10 @@
                         this.loadProductsForBranch();
                     }
 
-                    // Load rewards if customer is already selected
                     if (this.selectedCustomerId && this.selectedBranch) {
                         this.loadCustomerRewards();
                     }
 
-                    // Watch for customer selection changes
                     this.$watch('selectedCustomerId', (newVal, oldVal) => {
                         if (newVal && this.selectedBranch) {
                             this.loadCustomerRewards();
@@ -1401,7 +1440,7 @@
                     });
                 },
 
-                // ===== REWARD METHODS =====
+                // Reward Methods
                 async loadCustomerRewards() {
                     if (!this.selectedCustomerId || !this.selectedBranch) {
                         this.availableRewards = [];
@@ -1482,22 +1521,24 @@
                         const data = await response.json();
 
                         if (data.success) {
+                            const discountValue = parseFloat(data.discount_value) || 0;
+                            
                             this.appliedReward = {
                                 id: this.selectedReward.id,
                                 voucher_code: this.selectedReward.voucher_code || 'N/A',
-                                description: this.selectedReward.description || 'Reward',
-                                discount_value: data.discount_value || 0,
+                                description: this.selectedReward.description || 'Reward Discount',
+                                discount_value: discountValue,
                                 item_name: this.selectedReward.item_name || '',
-                                reward_type: data.reward_type || this.selectedReward.reward_type,
-                                product_data: data.product_data || this.selectedReward.product_data
+                                reward_type: data.reward_type || this.selectedReward.reward_type || 'fixed_discount',
+                                product_data: data.product_data || this.selectedReward.product_data || null,
+                                is_percentage: data.is_percentage || false,
+                                percentage: data.percentage || 0
                             };
                             
                             this.customerRewardId = this.selectedReward.id;
-                            this.rewardDiscountAmount = data.discount_value || 0;
+                            this.rewardDiscountAmount = discountValue;
                             this.rewardVoucherCode = this.selectedReward.voucher_code || null;
                             
-                            // ===== AUTO-ADD PRODUCT TO CART =====
-                            // If this is a product reward, auto-add the product to cart
                             if (this.appliedReward.product_data && 
                                 (this.appliedReward.reward_type === 'free_product' || 
                                  this.appliedReward.reward_type === 'product_discount')) {
@@ -1505,6 +1546,7 @@
                             }
                             
                             this.selectedReward = null;
+                            this.$forceUpdate();
                             this.showNotification('Reward applied successfully!', 'success');
                         } else {
                             this.showNotification('❌ Error: ' + data.message, 'error');
@@ -1517,31 +1559,22 @@
                     }
                 },
 
-                // ===== AUTO-ADD PRODUCT TO CURRENT ORDER =====
                 autoAddProductFromReward(productData) {
                     if (!productData) return;
                     
-                    console.log('Auto-adding product from reward:', productData);
-                    
-                    // The backend could return 'id' or 'product_id' depending on the serialization. Checking both.
                     const pId = productData.product_id || productData.id;
                     const pName = productData.product_name || productData.name;
                     const pPrice = productData.selling_price || productData.price;
                     
-                    // Check if product is already in cart
                     const existingItem = this.cart.find(item => item.product_id === pId);
-                    
-                    // Get the full product details from the loaded POS products list
                     const fullProduct = this.products.find(p => p.id === pId);
                     
                     if (existingItem) {
-                        // If product already exists in cart, increase quantity
                         existingItem.quantity++;
                         existingItem.from_reward = true;
                         this.updateItemSubtotal(existingItem);
                         this.showNotification(`Added another "${pName || fullProduct?.product_name || 'Product'}" to cart from reward!`, 'success');
                     } else {
-                        // Add new product to cart using dynamically pulled attributes
                         const newItem = {
                             product_id: pId,
                             name: pName || fullProduct?.product_name || 'Product',
@@ -1556,13 +1589,11 @@
                         this.cart.push(newItem);
                         this.updateItemSubtotal(newItem);
                         
-                        // Show a detailed notification mentioning ingredients if applicable
                         const hasIngredients = fullProduct?.product_ingredients && fullProduct.product_ingredients.length > 0;
                         const productType = hasIngredients ? ' (with ingredients)' : '';
                         this.showNotification(`✅ Product "${newItem.name}"${productType} added to Current Order from reward!`, 'success');
                     }
                     
-                    // Force a cart update
                     this.saveToStorage();
                     this.updateCartSubtotals();
                 },
@@ -1570,7 +1601,6 @@
                 removeAppliedReward() {
                     if (!this.appliedReward) return;
                     
-                    // Remove product if it was added from reward
                     if (this.appliedReward.product_data) {
                         const productId = this.appliedReward.product_data.product_id || this.appliedReward.product_data.id;
                         const index = this.cart.findIndex(item => 
@@ -1578,7 +1608,7 @@
                         );
                         if (index !== -1) {
                             this.cart.splice(index, 1);
-                            this.showNotification(`Product removed from cart.`, 'info');
+                            this.showNotification('Product removed from cart.', 'info');
                         }
                     }
                     
@@ -1587,9 +1617,10 @@
                     this.rewardVoucherCode = null;
                     this.appliedReward = null;
                     this.showNotification('Reward removed.', 'info');
+                    this.$forceUpdate();
                 },
 
-                // Methods
+                // Branch Methods
                 getBranchName(id) {
                     if (!id) return 'Select a branch';
                     const branch = this.branches.find(b => b.id == id);
@@ -2050,7 +2081,6 @@
                             vat_amount: this.orderSummary.vatAmount,
                             change: this.change,
                             notes: this.payment.notes || '',
-                            gcash_ref_no: this.payment.gcashRefNo,
                             branch_id: this.selectedBranch,
                             customer: this.customer,
                             selected_customer_id: isWalkInCustomer ? null : this.selectedCustomerId,
@@ -2117,12 +2147,10 @@
                     this.payment = {
                         method: '0',
                         amountPaid: '',
-                        gcashRefNo: '',
                         termsAccepted: false,
                         notes: ''
                     };
 
-                    // Reset reward state
                     this.availableRewards = [];
                     this.selectedReward = null;
                     this.appliedReward = null;
@@ -2176,6 +2204,7 @@
                         localStorage.removeItem('pos_customer');
                         localStorage.removeItem('pos_last_order');
                         localStorage.removeItem('pos_last_customer');
+                        localStorage.removeItem('pos_selected_branch');
                     } catch (error) {
                         console.error('Error clearing localStorage:', error);
                     }
@@ -2217,7 +2246,9 @@
                         notification.style.opacity = '0';
                         notification.style.transform = 'translateY(-20px)';
                         setTimeout(() => {
-                            document.body.removeChild(notification);
+                            if (notification.parentNode) {
+                                document.body.removeChild(notification);
+                            }
                         }, 300);
                     }, 3000);
 

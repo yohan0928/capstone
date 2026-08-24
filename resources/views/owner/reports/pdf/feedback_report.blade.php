@@ -85,12 +85,12 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
-            font-size: 9px;
+            font-size: 12px;
         }
         table th {
             background: #7F5539;
             color: #fff;
-            font-size: 8px;
+            font-size: 10px;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -154,20 +154,31 @@
         .badge-blue { background: #dbeafe; color: #1e40af; }
         .badge-yellow { background: #fef3c7; color: #92400e; }
         .badge-gray { background: #f3f4f6; color: #4b5563; }
-        
+
+        /*
+         * Rating rows are built with display:table / table-cell rather than
+         * flexbox. DomPDF's flexbox support is partial and does not honor
+         * `gap` at all, so flex-based rows can render with overlapping or
+         * missing spacing. Table-cell layout is fully supported and matches
+         * what .summary-cards above already relies on.
+         */
         .star-row {
-            display: flex;
-            align-items: center;
-            gap: 4px;
+            display: table;
+            width: 100%;
             margin: 1px 0;
         }
         .star-row .star-label {
+            display: table-cell;
             font-size: 8px;
             color: #666;
-            width: 12px;
+            width: 14px;
+            vertical-align: middle;
+        }
+        .star-row .bar-cell {
+            display: table-cell;
+            vertical-align: middle;
         }
         .star-row .bar-bg {
-            flex: 1;
             background: #e5e7eb;
             border-radius: 3px;
             height: 6px;
@@ -179,38 +190,181 @@
             border-radius: 3px;
         }
         .star-row .count {
+            display: table-cell;
             font-size: 8px;
             color: #999;
-            width: 20px;
+            width: 22px;
             text-align: right;
+            vertical-align: middle;
         }
-        
+
+        .rating-inline .stars {
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .rating-inline .stars span {
+            font-size: 12px;
+        }
+        .rating-inline .value {
+            display: inline-block;
+            vertical-align: middle;
+            font-weight: bold;
+            margin-left: 6px;
+        }
+
+        /* ── Category card (mirrors the on-screen report's card design) ── */
         .category-block {
             margin-top: 16px;
-            padding: 12px;
+            padding: 16px;
             border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            background: #fafaf8;
+            border-radius: 6px;
+            background: #ffffff;
         }
-        .category-block .cat-title {
+
+        /* Header row: small tag icon + title/subtitle stack. Built with
+           float rather than flexbox (see .star-row note above re: DomPDF's
+           partial flex/gap support) and cleared via ::after. */
+        .cat-header {
+            margin-bottom: 10px;
+        }
+        .cat-header::after {
+            content: "";
+            display: block;
+            clear: both;
+        }
+        .cat-icon {
+            float: left;
+            width: 28px;
+            height: 28px;
+            background: #f3ede7;
+            border-radius: 6px;
+            position: relative;
+        }
+        /*
+         * Category icons are built from plain positioned <div>/<span>
+         * boxes with a background or border color, NOT inline <svg>.
+         * DomPDF's inline SVG support is inconsistent across installs
+         * (some builds render nothing at all), whereas absolute
+         * positioning + background-color is the same technique already
+         * used successfully by .bar-fill above, so this is guaranteed to
+         * render the same way in every DomPDF environment.
+         */
+        .icon-shape {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            width: 16px;
+            height: 16px;
+        }
+        .icon-shape span {
+            position: absolute;
+            display: block;
+            background: #7F5539;
+        }
+        .icon-shape span.outline {
+            background: none;
+            border: 1.2px solid #7F5539;
+        }
+        .icon-shape span.circle {
+            background: none;
+            border: 1.2px solid #7F5539;
+            border-radius: 50%;
+        }
+        .icon-fallback {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 28px;
+            height: 28px;
+            line-height: 28px;
+            text-align: center;
+            font-size: 13px;
+            color: #7F5539;
+        }
+        .cat-header-text {
+            margin-left: 36px;
+        }
+        .cat-title {
             font-size: 12px;
             font-weight: bold;
-            color: #7F5539;
-            margin-bottom: 6px;
+            color: #1f2937;
         }
-        .category-block .cat-meta {
+        .cat-subtitle {
             font-size: 9px;
-            color: #666;
+            color: #9ca3af;
+            margin-top: 1px;
+        }
+
+        .cat-rating-row {
             margin-bottom: 8px;
         }
-        .category-block .cat-summary {
+        .cat-rating-row .stars span {
+            font-size: 14px;
+        }
+        .cat-rating-row .value {
+            font-size: 11px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-left: 4px;
+        }
+        .cat-rating-row .reviews {
+            font-size: 9px;
+            color: #9ca3af;
+            margin-left: 4px;
+        }
+
+        /*
+         * Two-column layout using a REAL <table> element (not CSS
+         * display:table/table-cell, and not float). DomPDF's float support
+         * silently stacks adjacent floated divs when there's whitespace
+         * between them in the markup (and interacts poorly with
+         * page-break-inside:avoid on an ancestor), so a genuine <table> is
+         * the most reliable way to guarantee true side-by-side columns.
+         * table-layout:fixed locks each column to exactly 50% regardless
+         * of content height/length on either side.
+         */
+        .category-block .cat-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .category-block .cat-table td {
+            padding: 0;
+            border: none;
+            vertical-align: top;
+            width: 50%;
+        }
+        .category-block .cat-table td.cat-col-left {
+            padding-right: 12px;
+        }
+        .category-block .cat-table td.cat-col-right {
+            padding-left: 12px;
+        }
+
+        /* AI summary box on the right: its own bordered card with a header
+           strip, matching the on-screen report's "AI Feedback Summary"
+           panel (minus the Regenerate button, since the PDF is static). */
+        .ai-box {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+        }
+        .ai-box-header {
+            background: #f8f7f5;
+            padding: 6px 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .ai-box-header .label {
+            font-size: 9px;
+            font-weight: bold;
+            color: #444;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .ai-box-content {
+            padding: 10px;
             font-size: 10px;
             color: #444;
-            background: #f3f0eb;
-            padding: 8px 10px;
-            border-radius: 4px;
-            margin-top: 6px;
-            border-left: 3px solid #7F5539;
+            line-height: 1.5;
         }
         .no-comments {
             font-size: 9px;
@@ -262,6 +416,10 @@
 
 {{-- Summary Cards --}}
 @php
+    // NOTE: $byCategory here is already deduped/merged by name in
+    // buildReportData() (owners can otherwise end up with multiple
+    // ServiceCategory rows sharing the same display name). No additional
+    // grouping is needed in this template — each entry below is unique.
     $byBranch = $data['by_branch'] ?? [];
     $byCategory = $data['by_category'] ?? [];
     $totalFeedbacks = 0;
@@ -290,6 +448,19 @@
     </div>
 </div>
 
+{{-- Executive / Overall AI Summary --}}
+@if(!empty($overall_summary))
+    <div style="margin-bottom: 20px;">
+        <h2 style="font-size: 14px; color: #7F5539; margin-bottom: 8px; border-bottom: 2px solid #7F5539; padding-bottom: 4px;">
+            Executive Summary
+        </h2>
+        <div class="ai-box">
+            <div class="ai-box-header"><span class="label">AI Feedback Summary</span></div>
+            <div class="ai-box-content">{{ $overall_summary }}</div>
+        </div>
+    </div>
+@endif
+
 {{-- By Branch Table --}}
 @if(count($byBranch) > 0)
     <div style="margin-bottom: 20px;">
@@ -310,13 +481,13 @@
                     <tr>
                         <td><span class="branch-name">{{ $branch['branch_name'] ?? 'Unknown' }}</span></td>
                         <td>
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <div style="display: flex;">
+                            <div class="rating-inline">
+                                <span class="stars">
                                     @for($i = 1; $i <= 5; $i++)
-                                        <span style="font-size: 12px; color: {{ $i <= round($branch['avg_rating'] ?? 0) ? '#fbbf24' : '#d1d5db' }};">★</span>
+                                        <span style="color: {{ $i <= round($branch['avg_rating'] ?? 0) ? '#fbbf24' : '#d1d5db' }};">★</span>
                                     @endfor
-                                </div>
-                                <span style="font-weight: bold;">{{ number_format($branch['avg_rating'] ?? 0, 1) }}</span>
+                                </span>
+                                <span class="value">{{ number_format($branch['avg_rating'] ?? 0, 1) }}</span>
                             </div>
                         </td>
                         <td><span class="badge badge-blue">{{ $branch['total'] ?? 0 }} reviews</span></td>
@@ -329,9 +500,11 @@
                                 @php $pct = $total > 0 ? ($starDist[$star] / $total * 100) : 0; @endphp
                                 <div class="star-row">
                                     <span class="star-label">{{ $star }}★</span>
-                                    <div class="bar-bg">
-                                        <div class="bar-fill" style="width: {{ $pct }}%;"></div>
-                                    </div>
+                                    <span class="bar-cell">
+                                        <div class="bar-bg">
+                                            <div class="bar-fill" style="width: {{ $pct }}%;"></div>
+                                        </div>
+                                    </span>
                                     <span class="count">{{ $starDist[$star] }}</span>
                                 </div>
                             @endforeach
@@ -358,50 +531,134 @@
                 $catAvg = $category['avg_rating'] ?? 0;
                 $starDist = $category['star_distribution'] ?? [5=>0,4=>0,3=>0,2=>0,1=>0];
                 $comments = $category['comments'] ?? [];
+                $aiSummary = $category['ai_summary'] ?? null;
             @endphp
             <div class="category-block">
-                <div class="cat-title">{{ $category['category_name'] ?? 'Unknown' }}</div>
-                <div class="cat-meta">
-                    <span style="font-weight: bold;">{{ number_format($catAvg, 1) }} / 5.0</span>
-                    &nbsp;·&nbsp; {{ $catTotal }} feedbacks
-                </div>
-                
-                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px;">
-                    <div style="display: flex; gap: 2px;">
-                        @for($i = 1; $i <= 5; $i++)
-                            <span style="font-size: 14px; color: {{ $i <= round($catAvg) ? '#fbbf24' : '#d1d5db' }};">★</span>
-                        @endfor
-                    </div>
-                </div>
-                
-                <div style="max-width: 250px; margin-top: 6px;">
-                    @foreach([5,4,3,2,1] as $star)
-                        @php $pct = $catTotal > 0 ? ($starDist[$star] / $catTotal * 100) : 0; @endphp
-                        <div class="star-row">
-                            <span class="star-label">{{ $star }}★</span>
-                            <div class="bar-bg">
-                                <div class="bar-fill" style="width: {{ $pct }}%;"></div>
+
+                {{--
+                    Header: tag icon + category name / feedback count.
+                    Icons are plain CSS boxes (position:absolute divs with
+                    a background or border), not SVG — see .icon-shape
+                    comment in <style> above for why. Matched by keyword
+                    against category_name; unrecognized categories fall
+                    back to the star.
+                --}}
+                @php
+                    $catNameLower = strtolower(trim($category['category_name'] ?? ''));
+                @endphp
+                <div class="cat-header">
+                    <div class="cat-icon">
+                        @if(str_contains($catNameLower, 'pod'))
+                            {{-- Private Pod: L-shaped desk + pendant lamp with rays, above-left --}}
+                            <div class="icon-shape">
+                                <span style="top:3px;left:2px;width:2px;height:13px;"></span>
+                                <span style="top:5px;left:2px;width:9px;height:2px;"></span>
+                                <span style="top:10px;left:2px;width:9px;height:2px;"></span>
+                                <span class="circle" style="top:0;left:1px;width:3px;height:3px;"></span>
+                                <span style="top:-2px;left:2px;width:1px;height:1.5px;"></span>
+                                <span style="top:0.5px;left:5px;width:1.5px;height:1px;"></span>
                             </div>
-                            <span class="count">{{ $starDist[$star] }}</span>
-                        </div>
-                    @endforeach
-                </div>
-                
-                @if(count($comments) > 0)
-                    <div class="cat-summary">
-                        <strong style="font-size: 9px; color: #7F5539;">Customer Comments:</strong>
-                        <ul style="margin-top: 4px; padding-left: 15px; font-size: 9px; color: #555;">
-                            @foreach(array_slice($comments, 0, 5) as $comment)
-                                <li style="margin-bottom: 2px;">{{ $comment }}</li>
-                            @endforeach
-                            @if(count($comments) > 5)
-                                <li style="color: #999;">... and {{ count($comments) - 5 }} more comment(s)</li>
-                            @endif
-                        </ul>
+                        @elseif(str_contains($catNameLower, 'room'))
+                            {{-- Private Room: table + TV with rabbit-ear antenna above it --}}
+                            <div class="icon-shape">
+                                <span style="top:11px;left:1px;width:2px;height:5px;"></span>
+                                <span style="top:11px;left:12px;width:2px;height:5px;"></span>
+                                <span style="top:11px;left:1px;width:13px;height:2px;"></span>
+                                <span style="top:13px;left:6px;width:2px;height:3px;"></span>
+                                <span style="top:13px;left:9px;width:2px;height:3px;"></span>
+                                <span class="outline" style="top:0;left:3px;width:9px;height:5px;"></span>
+                                <span style="top:-3px;left:4px;width:1.4px;height:4px;"></span>
+                                <span style="top:-3px;left:10px;width:1.4px;height:4px;"></span>
+                            </div>
+                        @elseif(str_contains($catNameLower, 'common') || str_contains($catNameLower, 'area'))
+                            {{-- Common Area: table with outer legs + crossbar + inner center legs --}}
+                            <div class="icon-shape">
+                                <span style="top:2px;left:1px;width:2px;height:13px;"></span>
+                                <span style="top:2px;left:12px;width:2px;height:13px;"></span>
+                                <span style="top:6px;left:1px;width:13px;height:2px;"></span>
+                                <span style="top:8px;left:6px;width:2px;height:7px;"></span>
+                                <span style="top:8px;left:9px;width:2px;height:7px;"></span>
+                            </div>
+                        @else
+                            <div class="icon-fallback">&#9733;</div>
+                        @endif
                     </div>
-                @else
-                    <div class="no-comments">No written comments available for this category.</div>
-                @endif
+                    <div class="cat-header-text">
+                        <div class="cat-title">{{ $category['category_name'] ?? 'Unknown' }}</div>
+                        <div class="cat-subtitle">{{ $catTotal }} feedbacks</div>
+                    </div>
+                </div>
+
+                {{--
+                    Two-column layout via a real <table>, not float/CSS
+                    display:table. See .cat-table comment in <style> above
+                    for why: DomPDF's float support silently stacks these
+                    columns depending on surrounding whitespace/markup, and
+                    a genuine <table> avoids that failure mode entirely.
+                --}}
+                <table class="cat-table">
+                    <tr>
+                        {{-- Left column: rating info --}}
+                        <td class="cat-col-left">
+                            <div class="cat-rating-row">
+                                <span class="stars">
+                                    @for($i = 1; $i <= 5; $i++)
+                                        <span style="color: {{ $i <= round($catAvg) ? '#fbbf24' : '#d1d5db' }};">★</span>
+                                    @endfor
+                                </span>
+                                <span class="value">{{ number_format($catAvg, 1) }} / 5.0</span>
+                                <span class="reviews">({{ $catTotal }} reviews)</span>
+                            </div>
+
+                            <div>
+                                @foreach([5,4,3,2,1] as $star)
+                                    @php $pct = $catTotal > 0 ? ($starDist[$star] / $catTotal * 100) : 0; @endphp
+                                    <div class="star-row">
+                                        <span class="star-label">{{ $star }}★</span>
+                                        <span class="bar-cell">
+                                            <div class="bar-bg">
+                                                <div class="bar-fill" style="width: {{ $pct }}%;"></div>
+                                            </div>
+                                        </span>
+                                        <span class="count">{{ $starDist[$star] }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </td>
+
+                        {{--
+                            Right column: bordered "AI Feedback Summary" card,
+                            matching the on-screen report's panel design.
+                            $aiSummary is populated by exportFeedbackPdf() via
+                            generateCategoryAISummary(); it is always a string
+                            (falls back to a "no comments" / "unavailable"
+                            message), so we only fall back to the raw-comment
+                            list if it's somehow missing entirely (e.g. view
+                            reused outside the PDF export flow).
+                        --}}
+                        <td class="cat-col-right">
+                            <div class="ai-box">
+                                <div class="ai-box-header"><span class="label">AI Feedback Summary</span></div>
+                                <div class="ai-box-content">
+                                    @if(!empty($aiSummary))
+                                        {{ $aiSummary }}
+                                    @elseif(count($comments) > 0)
+                                        <ul style="padding-left: 15px; font-size: 9px; color: #555;">
+                                            @foreach(array_slice($comments, 0, 5) as $comment)
+                                                <li style="margin-bottom: 2px;">{{ $comment }}</li>
+                                            @endforeach
+                                            @if(count($comments) > 5)
+                                                <li style="color: #999;">... and {{ count($comments) - 5 }} more comment(s)</li>
+                                            @endif
+                                        </ul>
+                                    @else
+                                        <span class="no-comments">No written comments available for this category.</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
             </div>
         @endforeach
     </div>

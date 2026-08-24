@@ -362,7 +362,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed By</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
                 </thead>
 
@@ -383,24 +383,29 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
                                     :class="txn.type === 'stock_in' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'"
-                                    x-text="(txn.type === 'stock_in' ? '+' : '−') + (txn.total_quantity ?? 0)"></span>
+                                    x-text="(txn.type === 'stock_in' ? '+' : '−') + txnDisplayQty(txn)"></span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700" x-text="txn.processed_by ?? '—'"></td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <button @click="toggleTxnRow(txn.transaction_no)"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
-                                    :class="expandedTxnRows[txn.transaction_no]
-                                        ? 'bg-[#7F5539] text-white border-[#7F5539]'
-                                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'">
-                                    <span x-text="(txn.items_count ?? itemsByTxn(txn.transaction_no).length) + ' item(s)'"></span>
-                                    <svg class="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200"
-                                        :class="expandedTxnRows[txn.transaction_no] ? 'rotate-180' : ''"
-                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </button>
+                                <div class="relative group inline-block">
+                                    <button @click="toggleTxnRow(txn.transaction_no)"
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
+                                        :class="expandedTxnRows[txn.transaction_no]
+                                            ? 'bg-[#7F5539] text-white border-[#7F5539]'
+                                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'">
+                                        <svg class="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200"
+                                            :class="expandedTxnRows[txn.transaction_no] ? 'rotate-180' : ''"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </button>
+
+                                    <!-- Tooltip -->
+                                    <span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10"
+                                        x-text="'View ' + itemsByTxn(txn.transaction_no).length + ' item(s)'"></span>
+                                </div>
                             </td>
                         </tr>
 
@@ -603,6 +608,23 @@ document.addEventListener('alpine:init', () => {
 
         itemsByTxn(transactionNo) {
             return this.itemsLog.filter(i => i.transaction_no === transactionNo);
+        },
+
+        // Displayed Qty for a transaction row.
+        // - Stock In: unchanged, uses the backend's total_quantity (real units received).
+        // - Stock Out: a COUNT of line items, not a sum of quantities — ingredients are
+        //   measured in mixed units (g, pcs, etc.) so their quantity values aren't
+        //   meaningful to add together. Each included line (regular RTD/packaged product,
+        //   any ingredient, or an MTO-consumed ingredient) counts as 1 "used" item,
+        //   e.g. Plastic Cup -1, Coffee Powder -1, Plastic Straw -1.
+        //   MTO drinks (product rows measured in "cup") are excluded — they're what
+        //   triggered the ingredient consumption, not a distinct stocked-out item.
+        txnDisplayQty(txn) {
+            if (txn.type !== 'stock_out') {
+                return txn.total_quantity ?? 0;
+            }
+            const items = this.itemsByTxn(txn.transaction_no);
+            return items.filter(i => !(i.item_type === 'product' && i.unit === 'cup')).length;
         },
 
         toggleTxnRow(transactionNo) {

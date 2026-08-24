@@ -693,7 +693,7 @@ class HomeController extends Controller
             return 50;
         }
 
-        $distance = $this->calculateDistance( // ← Haversine called here
+        $distance = $this->calculateDistance(
             $userLat,
             $userLon,
             $branch->latitude,
@@ -716,13 +716,21 @@ class HomeController extends Controller
         }
 
         $branchFeatures = $this->getFeaturesArray($branch->features);
-        $branchFeatures = array_map('strtolower', $branchFeatures);
-        $userFeaturesLower = array_map('strtolower', $userFeatures);
+        $branchFeatures = array_map('strtolower', array_map('trim', $branchFeatures));
+        
+        // Get normalized user features using dynamic similarity
+        $normalizedUserFeatures = $this->normalizeFeaturesDynamically($userFeatures);
+        $normalizedUserFeaturesLower = array_map('strtolower', array_map('trim', $normalizedUserFeatures));
+        
+        // Get normalized branch features using dynamic similarity
+        $normalizedBranchFeatures = $this->normalizeFeaturesDynamically($branchFeatures);
+        $normalizedBranchFeaturesLower = array_map('strtolower', array_map('trim', $normalizedBranchFeatures));
 
-        $matchedFeatures = array_intersect($branchFeatures, $userFeaturesLower);
+        // Find matches using normalized values
+        $matchedFeatures = array_intersect($normalizedBranchFeaturesLower, $normalizedUserFeaturesLower);
 
-        if (count($userFeatures) > 0) {
-            return (count($matchedFeatures) / count($userFeatures)) * 100;
+        if (count($normalizedUserFeaturesLower) > 0) {
+            return (count($matchedFeatures) / count($normalizedUserFeaturesLower)) * 100;
         }
 
         return 0;
@@ -737,11 +745,160 @@ class HomeController extends Controller
         }
 
         $branchFeatures = $this->getFeaturesArray($branch->features);
-        $branchFeatures = array_map('strtolower', $branchFeatures);
-        $userFeaturesLower = array_map('strtolower', $userFeatures);
+        $branchFeaturesLower = array_map('strtolower', array_map('trim', $branchFeatures));
+        
+        // Get normalized user features using dynamic similarity
+        $normalizedUserFeatures = $this->normalizeFeaturesDynamically($userFeatures);
+        $normalizedUserFeaturesLower = array_map('strtolower', array_map('trim', $normalizedUserFeatures));
+        
+        // Get normalized branch features using dynamic similarity
+        $normalizedBranchFeatures = $this->normalizeFeaturesDynamically($branchFeatures);
+        $normalizedBranchFeaturesLower = array_map('strtolower', array_map('trim', $normalizedBranchFeatures));
 
-        return array_intersect($branchFeatures, $userFeaturesLower);
+        // Find matches using normalized values
+        $matchedNormalized = array_intersect($normalizedBranchFeaturesLower, $normalizedUserFeaturesLower);
+        
+        // Return original user features that matched
+        $matchedOriginal = [];
+        foreach ($matchedNormalized as $normalizedValue) {
+            foreach ($userFeatures as $userFeature) {
+                $normalizedUserFeature = strtolower(trim($userFeature));
+                if ($normalizedUserFeature === $normalizedValue) {
+                    $matchedOriginal[] = $userFeature;
+                    break;
+                }
+            }
+        }
+
+        return array_unique($matchedOriginal);
     }
+
+    /**
+     * Dynamically normalize features without hardcoded values
+     * Uses string similarity to group features that are clearly variations
+     * Only groups features that are very similar (e.g., "wi-fi" and "wifi")
+     * Does NOT group different features (e.g., "Parking" vs "Free Parking")
+     */
+    private function normalizeFeaturesDynamically($features): array
+{
+    if (empty($features)) {
+        return [];
+    }
+
+    if (!is_array($features)) {
+        $features = [$features];
+    }
+
+    $features = array_map('trim', $features);
+    $features = array_filter($features);
+    
+    if (empty($features)) {
+        return [];
+    }
+
+    $groups = [];
+    $processed = [];
+
+    foreach ($features as $feature) {
+        $featureLower = strtolower($feature);
+        
+        // Skip if already processed
+        if (in_array($featureLower, $processed)) {
+            continue;
+        }
+
+        $foundGroup = false;
+        
+        // Check if this feature belongs to an existing group
+        foreach ($groups as $groupKey => $group) {
+            $groupFeatureLower = strtolower($groupKey);
+            
+            // Calculate similarity between features
+            $similarity = $this->calculateFeatureSimilarity($featureLower, $groupFeatureLower);
+            
+            // Only group if similarity is VERY high (97%+) 
+            // This ensures only nearly identical variations are grouped
+            if ($similarity >= 0.97) {
+                // Use the longer/more complete feature as the group key
+                if (strlen($feature) > strlen($groupKey)) {
+                    // Move existing group to new key
+                    $groups[$feature] = array_merge($groups[$groupKey], [$groupKey]);
+                    unset($groups[$groupKey]);
+                } else {
+                    $groups[$groupKey][] = $feature;
+                }
+                $foundGroup = true;
+                $processed[] = $featureLower;
+                break;
+            }
+        }
+        
+        if (!$foundGroup) {
+            $groups[$feature] = [$feature];
+            $processed[] = $featureLower;
+        }
+    }
+
+    // Extract representative features
+    $result = [];
+    foreach ($groups as $groupKey => $group) {
+        // Use the longest feature as the representative
+        usort($group, function($a, $b) {
+            return strlen($b) - strlen($a);
+        });
+        $result[] = $group[0];
+    }
+
+    return $result;
+}
+
+/**
+ * Calculate similarity between two feature strings
+ * Very strict - only returns high similarity for nearly identical strings
+ */
+private function calculateFeatureSimilarity($str1, $str2): float
+{
+    // Remove common separators and normalize
+    $str1 = preg_replace('/[^a-z0-9]/', '', $str1);
+    $str2 = preg_replace('/[^a-z0-9]/', '', $str2);
+    
+    // If strings are identical after normalization
+    if ($str1 === $str2) {
+        return 1.0;
+    }
+    
+    // Check if one contains the other AND they are very similar in length
+    // This handles cases like "wifi" and "wi-fi" where the difference is just punctuation
+    if (strlen($str1) >= 3 && strlen($str2) >= 3) {
+        $minLen = min(strlen($str1), strlen($str2));
+        $maxLen = max(strlen($str1), strlen($str2));
+        $lengthRatio = $minLen / $maxLen;
+        
+        // Only consider containment if length ratio is high (0.9+)
+        // This prevents "Free Parking" and "Parking" from being grouped
+        if ($lengthRatio >= 0.9) {
+            if (strpos($str1, $str2) !== false || strpos($str2, $str1) !== false) {
+                // If one contains the other and lengths are similar, they're the same
+                return 0.98;
+            }
+        }
+    }
+    
+    // Use Levenshtein distance for similarity
+    $distance = levenshtein($str1, $str2);
+    $maxLen = max(strlen($str1), strlen($str2));
+    
+    if ($maxLen === 0) {
+        return 0;
+    }
+    
+    // Calculate similarity with stricter threshold
+    $similarity = 1 - ($distance / $maxLen);
+    
+    // Only return high similarity for very close matches
+    // This ensures "Parking" and "Free Parking" stay separate
+    return max(0, $similarity);
+}
 
     private function calculateSpaceTypeMatch($branch, $customerPreference): float
     {
@@ -763,10 +920,17 @@ class HomeController extends Controller
             return 0;
         }
 
-        $matchedSpaceTypes = array_intersect($branchSpaceTypes, $userSpaceTypes);
+        // Use dynamic normalization for space types
+        $normalizedUserSpaceTypes = $this->normalizeFeaturesDynamically($userSpaceTypes);
+        $normalizedUserSpaceTypesLower = array_map('strtolower', array_map('trim', $normalizedUserSpaceTypes));
+        
+        $normalizedBranchSpaceTypes = $this->normalizeFeaturesDynamically($branchSpaceTypes);
+        $normalizedBranchSpaceTypesLower = array_map('strtolower', array_map('trim', $normalizedBranchSpaceTypes));
 
-        if (count($userSpaceTypes) > 0) {
-            return (count($matchedSpaceTypes) / count($userSpaceTypes)) * 100;
+        $matchedSpaceTypes = array_intersect($normalizedBranchSpaceTypesLower, $normalizedUserSpaceTypesLower);
+
+        if (count($normalizedUserSpaceTypesLower) > 0) {
+            return (count($matchedSpaceTypes) / count($normalizedUserSpaceTypesLower)) * 100;
         }
 
         return 0;
@@ -1819,7 +1983,7 @@ class HomeController extends Controller
 
     public function getAllUniqueFeatures()
     {
-        return Cache::remember('all_unique_features_v3', 3600, function () {
+        return Cache::remember('all_unique_features_v5', 3600, function () {
             $allFeatures = Branch::where('active', 1)
                 ->where('branch_status', 1)
                 ->whereNotNull('features')
@@ -1832,38 +1996,13 @@ class HomeController extends Controller
                 })
                 ->values();
 
-            $groupedFeatures = [];
-
-            foreach ($allFeatures as $feature) {
-                $normalized = strtolower(preg_replace('/[^a-z0-9]/', '', $feature));
-
-                $found = false;
-                foreach ($groupedFeatures as $index => $group) {
-                    if ($group['normalized'] === $normalized) {
-                        $groupedFeatures[$index]['variations'][] = $feature;
-                        $found = true;
-                        break;
-                    }
-                }
-
-                if (!$found) {
-                    $groupedFeatures[] = [
-                        'normalized' => $normalized,
-                        'variations' => [$feature]
-                    ];
-                }
-            }
-
-            $uniqueFeatures = [];
-            foreach ($groupedFeatures as $group) {
-                usort($group['variations'], function($a, $b) {
-                    return strlen($a) - strlen($b);
-                });
-                $uniqueFeatures[] = $group['variations'][0];
-            }
-
-            sort($uniqueFeatures);
-            return $uniqueFeatures;
+            // Dynamically normalize features without hardcoded values
+            $normalizedFeatures = $this->normalizeFeaturesDynamically($allFeatures->toArray());
+            
+            // Sort alphabetically
+            sort($normalizedFeatures);
+            
+            return array_values($normalizedFeatures);
         });
     }
 
@@ -2032,7 +2171,7 @@ class HomeController extends Controller
             'max_rate_preferred' => $preference->max_rate_preferred ?? null,
         ];
 
-        $allFeatures = $this->getAllUniqueFeatures();
+        $uniqueFeatures = $this->getAllUniqueFeatures();
 
         $spaceTypes = ServiceName::where('active', 1)
             ->where('service_name_status', 1)
@@ -2119,7 +2258,7 @@ class HomeController extends Controller
         return view('customer.home.preferences', compact(
             'preference',
             'decodedPreferences',
-            'allFeatures',
+            'uniqueFeatures',
             'spaceTypes',
             'peakHours',
             'timeSlots',
@@ -2306,7 +2445,7 @@ class HomeController extends Controller
         // Clear recommendation cache
         Cache::forget('hybrid_recommendation_' . $customer->id);
         Cache::forget('top_branches_global_customer_v2');
-        Cache::forget('all_unique_features_v3');
+        Cache::forget('all_unique_features_v5');
 
         if (!$isAjax) {
             return redirect()->route('sub_three.home.showHome')

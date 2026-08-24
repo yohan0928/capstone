@@ -22,8 +22,67 @@ use Illuminate\Support\Facades\Notification;
 class InventoryController extends Controller
 {
     // ─────────────────────────────────────────────────────────────
-    // ANNOTATE TRANSACTIONS (items_count / total_quantity)
-    // Shared by the pending-approvals list.
+    // DEFAULT BRANCH
+    // Used to pre-fill Stock In / Stock Out forms so the owner
+    // doesn't have to pick a branch every time. Falls back to the
+    // first active branch alphabetically if "Claveria" isn't found.
+    // ─────────────────────────────────────────────────────────────
+    private function getDefaultBranch()
+    {
+        return Branch::where('active', 1)
+            ->where('branch_name', 'like', '%Claveria%')
+            ->first()
+            ?? Branch::where('active', 1)->orderBy('branch_name')->first();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // FLATTEN ITEMS FOR DISPLAY
+    // Turns each InventoryTransactionItem (with its `product` /
+    // `ingredient` relations) into a plain array with a single
+    // `product_name` (products) or `ingredient_name` (ingredients)
+    // field, so blade/Alpine can render it directly — no separate
+    // "details" fetch needed. Shared by the transactions log and by
+    // the Stock In / Stock Out history pages.
+    // ─────────────────────────────────────────────────────────────
+    private function mapItemsForDisplay($items)
+    {
+        return $items->map(function ($item) {
+
+            $isIngredient = $item->item_type === 'ingredient'
+                || (!empty($item->ingredient_id) && empty($item->product_id));
+
+            if ($isIngredient) {
+                return [
+                    'item_type'       => 'ingredient',
+                    'ingredient_id'   => $item->ingredient_id,
+                    'product_id'      => null,
+                    'ingredient_name' => $item->ingredient?->ingredient_name ?? 'Unknown',
+                    'product_name'    => null,
+                    'quantity'        => $item->quantity,
+                    'unit'            => $item->unit ?? $item->ingredient?->unit,
+                    'reason'          => $item->reason,
+                    'note'            => $item->note,
+                ];
+            }
+
+            return [
+                'item_type'       => $item->item_type ?? 'product',
+                'product_id'      => $item->product_id,
+                'ingredient_id'   => null,
+                'product_name'    => $item->product?->product_name ?? 'Unknown',
+                'ingredient_name' => null,
+                'quantity'        => $item->quantity,
+                'unit'            => $item->unit ?? $item->product?->unit,
+                'reason'          => $item->reason,
+                'note'            => $item->note,
+            ];
+        })->values();
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // ANNOTATE TRANSACTIONS (items_count / total_quantity / display_qty)
+    // Shared by the Inventory transactions log and the Stock In /
+    // Stock Out history pages.
     // ─────────────────────────────────────────────────────────────
     private function annotateTransactions($collection)
     {
@@ -58,12 +117,34 @@ class InventoryController extends Controller
                                  + $mtoProducts->count()
                                  + $manualIngredients->count();
 
+            // ── Same "displayed qty" rule as the Inventory Report page ──
+            // Stock In: unchanged, total_quantity (real units received).
+            // Stock Out: raw COUNT of line items, excluding MTO-drink rows
+            // (product-type rows measured in "cup" — these represent the
+            // drink itself, not a distinct stocked-out item; the ingredient
+            // rows are what actually get counted).
+            $txn->display_qty = $txn->type !== 'stock_out'
+                ? $txn->total_quantity
+                : $txn->items->reject(
+                    fn($i) => $i->item_type === 'product' && $i->unit === 'cup'
+                  )->count();
+
+            // Branch name, flattened for the frontend so it doesn't need
+            // to reach into a nested relation.
+            $txn->branch_name = $txn->branch->branch_name ?? '—';
+
+            // Flatten items last (after the counts above, which rely on
+            // the raw item_type/ingredient_id/product_id/note fields) so
+            // the frontend gets ready-to-render item rows without a
+            // separate details() fetch.
+            $txn->items = $this->mapItemsForDisplay($txn->items);
+
             return $txn;
         })->values();
     }
 
     // ─────────────────────────────────────────────────────────────
-    // SUMMARY (monthly ledger totals — unchanged)
+    // SUMMARY (monthly ledger totals — used by Inventory Report page)
     // ─────────────────────────────────────────────────────────────
     private function getSummary(int $ownerAccountId): array
     {
@@ -215,6 +296,7 @@ class InventoryController extends Controller
 
     // ─────────────────────────────────────────────────────────────
     // NEW ARRIVALS (stock-in transaction items from the last 7 days)
+    // Used by the Stock Levels page.
     // ─────────────────────────────────────────────────────────────
     private function getNewArrivals(int $ownerAccountId)
     {
@@ -254,7 +336,7 @@ class InventoryController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────
-    // LOW STOCK ITEMS
+    // LOW STOCK ITEMS — used by the Stock Levels page.
     // ─────────────────────────────────────────────────────────────
     private function getLowStockItems(int $ownerAccountId)
     {
@@ -264,125 +346,208 @@ class InventoryController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────
-    // PENDING + RECENTLY RESOLVED TRANSACTIONS
-    // Shows all pending transactions, plus approved/rejected ones
-    // resolved within the last N days, so staff can see the outcome
-    // inline in the table instead of the row just disappearing.
-    // ─────────────────────────────────────────────────────────────
-    private function getPendingTransactions(int $ownerAccountId, int $resolvedWithinDays = 3, int $resolvedLimit = 15)
-    {
-        $pending = InventoryTransaction::with(['items.product', 'items.ingredient', 'branch'])
-            ->where('owner_account_id', $ownerAccountId)
-            ->where('status', 'pending')
-            ->where('active', 1)
-            ->latest()
-            ->get();
-
-        $resolved = InventoryTransaction::with(['items.product', 'items.ingredient', 'branch'])
-            ->where('owner_account_id', $ownerAccountId)
-            ->whereIn('status', ['approved', 'rejected'])
-            ->where('active', 1)
-            ->where('approved_at', '>=', Carbon::now()->subDays($resolvedWithinDays))
-            ->orderByDesc('approved_at')
-            ->limit($resolvedLimit)
-            ->get();
-
-        $combined = $pending->concat($resolved)
-            ->sortByDesc(fn($txn) => $txn->status === 'pending' ? $txn->created_at : $txn->approved_at)
-            ->values();
-
-        return $this->annotateTransactions($combined);
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // INDEX
+    // INVENTORY PAGE — Stock Transactions log (all types, one list —
+    // type/in-out tabs were removed from the frontend; this endpoint
+    // still returns everything and the blade filters/searches client-side)
     // ─────────────────────────────────────────────────────────────
     public function index(Request $request)
     {
         $owner = Auth::guard('owner')->user();
+    
+        $transactions = $this->annotateTransactions(
+            InventoryTransaction::with(['items.product', 'items.ingredient', 'branch'])
+                ->where('owner_account_id', $owner->id)
+                ->where('active', 1)
+                ->latest()
+                ->limit(300)
+                ->get()
+        );
+    
+        $branches = Branch::where('active', 1)->orderBy('branch_name')->get(['id', 'branch_name']);
+    
+        if ($request->ajax()) {
+            return response()->json([
+                'success'      => true,
+                'transactions' => $transactions,
+            ]);
+        }
+    
+        return view('owner.inventory.inventory', compact('transactions', 'branches'));
+    }
 
-        $summary             = $this->getSummary($owner->id);
-        $stockLevels         = $this->getStockLevels($owner->id);
-        $newArrivals         = $this->getNewArrivals($owner->id);
-        $lowStockItems       = $this->getLowStockItems($owner->id);
-        $pendingTransactions = $this->getPendingTransactions($owner->id);
-        $pendingCount        = $pendingTransactions->where('status', 'pending')->count();
-
-        // Products (exclude MTO) — used to populate Stock In / Stock Out selectors
-        $products = Product::with('branch')
-            ->where('owner_account_id', $owner->id)
+    // ─────────────────────────────────────────────────────────────
+    // STOCK IN HISTORY PAGE
+    // All stock_in transactions, items already flattened for display —
+    // the page renders item details inline (no modal / no details() call).
+    // The Inventory page's eye icon links here with ?highlight={uuid}.
+    // ─────────────────────────────────────────────────────────────
+    public function stockInHistory(Request $request)
+    {
+        $owner = Auth::guard('owner')->user();
+    
+        $transactions = $this->annotateTransactions(
+            InventoryTransaction::with(['items.product', 'items.ingredient', 'branch'])
+                ->where('owner_account_id', $owner->id)
+                ->where('type', 'stock_in')
+                ->where('active', 1)
+                ->latest()
+                ->limit(300)
+                ->get()
+        );
+    
+        if ($request->ajax()) {
+            return response()->json(['success' => true, 'transactions' => $transactions]);
+        }
+    
+        $products = Product::where('owner_account_id', $owner->id)
             ->where('active', 1)
             ->whereNotIn('product_category', ['mto', 'made_to_order'])
             ->orderBy('product_name')
-            ->get(['id', 'uuid', 'branch_id', 'product_name', 'unit', 'quantity_in', 'quantity_threshold']);
-
-        // Ingredients
-        $ingredients = Ingredient::with('branch')
-            ->where('owner_account_id', $owner->id)
+            ->get(['id', 'uuid', 'branch_id', 'product_name', 'unit']);
+    
+        $ingredients = Ingredient::where('owner_account_id', $owner->id)
             ->where('active', 1)
             ->orderBy('ingredient_name')
-            ->get([
-                'id',
-                'uuid',
-                'branch_id',
-                'ingredient_name',
-                'unit',
-                'stock_quantity_in',
-                'stock_quantity_threshold',
-            ]);
+            ->get(['id', 'uuid', 'branch_id', 'ingredient_name', 'unit']);
+    
+        $defaultBranch    = $this->getDefaultBranch();
+        $branches         = Branch::where('active', 1)->orderBy('branch_name')->get(['id', 'branch_name']);
+        $processedByName  = $owner->first_name . ' ' . $owner->last_name;
+    
+        return view('owner.inventory.stock-in-history', compact(
+            'transactions', 'branches', 'products', 'ingredients', 'defaultBranch', 'processedByName'
+        ));
+    }
 
-        $branches = Branch::where('active', 1)
-            ->orderBy('branch_name')
-            ->get();
-
-        $periodLabel = now()->format('F Y');
-
-        $stats = [
-            'total_transactions' => InventoryTransaction::where('owner_account_id', $owner->id)
-                ->where('active', 1)->count(),
-
-            'approved_transactions' => InventoryTransaction::where('owner_account_id', $owner->id)
-                ->where('status', 'approved')->where('active', 1)->count(),
-
-            'pending_transactions' => $pendingCount,
-
-            'rejected_transactions' => InventoryTransaction::where('owner_account_id', $owner->id)
-                ->where('status', 'rejected')->where('active', 1)->count(),
-        ];
-
+    // STOCK OUT HISTORY PAGE
+    // All stock_out transactions, items already flattened for display —
+    // includes approved_by / rejected_reason so the page can show them
+    // without a separate details() call.
+    // The Inventory page's eye icon links here with ?highlight={uuid}.
+    // ─────────────────────────────────────────────────────────────
+    public function stockOutHistory(Request $request)
+    {
+        $owner = Auth::guard('owner')->user();
+    
+        $transactions = $this->annotateTransactions(
+            InventoryTransaction::with(['items.product', 'items.ingredient', 'branch'])
+                ->where('owner_account_id', $owner->id)
+                ->where('type', 'stock_out')
+                ->where('active', 1)
+                ->latest()
+                ->limit(300)
+                ->get()
+        );
+    
         if ($request->ajax()) {
             return response()->json([
-                'success'              => true,
-                'summary'              => $summary,
-                'stats'                => $stats,
-                'pending_count'        => $pendingCount,
-                'pending_transactions' => $pendingTransactions,
-                'stock_levels'         => $stockLevels,
-                'new_arrivals'         => $newArrivals,
-                'low_stock_items'      => $lowStockItems,
-                'products'             => $products,
-                'ingredients'          => $ingredients,
-                'branches'             => $branches,
+                'success'      => true,
+                'transactions' => $transactions,
             ]);
         }
-
-        return view('owner.product.inventory', compact(
-            'summary',
-            'pendingCount',
-            'pendingTransactions',
-            'stockLevels',
-            'newArrivals',
-            'lowStockItems',
-            'products',
-            'ingredients',
-            'branches',
-            'periodLabel',
-            'stats'
+    
+        $products = Product::where('owner_account_id', $owner->id)
+            ->where('active', 1)
+            ->whereNotIn('product_category', ['mto', 'made_to_order'])
+            ->orderBy('product_name')
+            ->get(['id', 'uuid', 'branch_id', 'product_name', 'unit']);
+    
+        $ingredients = Ingredient::where('owner_account_id', $owner->id)
+            ->where('active', 1)
+            ->orderBy('ingredient_name')
+            ->get(['id', 'uuid', 'branch_id', 'ingredient_name', 'unit']);
+    
+        $defaultBranch    = $this->getDefaultBranch();
+        $branches         = Branch::where('active', 1)->orderBy('branch_name')->get(['id', 'branch_name']);
+        $processedByName  = $owner->first_name . ' ' . $owner->last_name;
+    
+        return view('owner.inventory.stock-out-history', compact(
+            'transactions', 'branches', 'products', 'ingredients', 'defaultBranch', 'processedByName'
         ));
     }
 
     // ─────────────────────────────────────────────────────────────
+    // STOCK LEVELS PAGE
+    // ─────────────────────────────────────────────────────────────
+    public function stockLevels(Request $request)
+    {
+        $owner = Auth::guard('owner')->user();
+
+        $stockLevels   = $this->getStockLevels($owner->id);
+        $newArrivals   = $this->getNewArrivals($owner->id);
+        $lowStockItems = $this->getLowStockItems($owner->id);
+        $branches      = Branch::where('active', 1)->orderBy('branch_name')->get();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'success'         => true,
+                'stock_levels'    => $stockLevels,
+                'new_arrivals'    => $newArrivals,
+                'low_stock_items' => $lowStockItems,
+            ]);
+        }
+
+        return view('owner.inventory.stock-levels', compact(
+            'stockLevels',
+            'newArrivals',
+            'lowStockItems',
+            'branches'
+        ));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STOCK IN PAGE
+    // ─────────────────────────────────────────────────────────────
+    public function stockInPage()
+    {
+        $owner = Auth::guard('owner')->user();
+    
+        $products = Product::where('owner_account_id', $owner->id)
+            ->where('active', 1)
+            ->whereNotIn('product_category', ['mto', 'made_to_order'])
+            ->orderBy('product_name')
+            ->get(['id', 'uuid', 'branch_id', 'product_name', 'unit']);
+    
+        $ingredients = Ingredient::where('owner_account_id', $owner->id)
+            ->where('active', 1)
+            ->orderBy('ingredient_name')
+            ->get(['id', 'uuid', 'branch_id', 'ingredient_name', 'unit']);
+    
+        $defaultBranch = $this->getDefaultBranch();
+        $branches      = Branch::where('active', 1)->orderBy('branch_name')->get();
+    
+        return view('owner.inventory.stock-in', compact('products', 'ingredients', 'defaultBranch', 'branches'));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STOCK OUT PAGE
+    // ─────────────────────────────────────────────────────────────
+    public function stockOutPage()
+    {
+        $owner = Auth::guard('owner')->user();
+
+        $products = Product::where('owner_account_id', $owner->id)
+            ->where('active', 1)
+            ->whereNotIn('product_category', ['mto', 'made_to_order'])
+            ->orderBy('product_name')
+            ->get(['id', 'uuid', 'branch_id', 'product_name', 'unit']);
+
+        $ingredients = Ingredient::where('owner_account_id', $owner->id)
+            ->where('active', 1)
+            ->orderBy('ingredient_name')
+            ->get(['id', 'uuid', 'branch_id', 'ingredient_name', 'unit']);
+
+        $defaultBranch = $this->getDefaultBranch();
+        $branches      = Branch::where('active', 1)->orderBy('branch_name')->get();
+
+        return view('owner.inventory.stock-out', compact('products', 'ingredients', 'defaultBranch', 'branches'));
+    }
+
+    // ─────────────────────────────────────────────────────────────
     // DETAILS
+    // Kept for backward compatibility (e.g. if anything else still
+    // links to it) even though the Inventory page's eye icon no
+    // longer opens a modal that calls this endpoint.
     // ─────────────────────────────────────────────────────────────
     public function details(string $uuid)
     {
@@ -396,32 +561,7 @@ class InventoryController extends Controller
                 ->where('owner_account_id', Auth::guard('owner')->id())
                 ->firstOrFail();
 
-            $items = $txn->items->map(function ($item) {
-
-                if ($item->item_type === 'ingredient' || (!empty($item->ingredient_id) && empty($item->product_id))) {
-                    return [
-                        'item_type'       => 'ingredient',
-                        'ingredient_name' => $item->ingredient?->ingredient_name ?? 'Unknown',
-                        'product_name'    => null,
-                        'quantity'        => $item->quantity,
-                        'unit'            => $item->unit ?? $item->ingredient?->unit,
-                        'reason'          => $item->reason,
-                        'note'            => $item->note,
-                    ];
-                }
-
-                return [
-                    'item_type'         => $item->item_type ?? 'product',
-                    'product_name'      => $item->product?->product_name ?? 'Unknown',
-                    'quantity'          => $item->quantity,
-                    'base_quantity'     => null,
-                    'unit'              => $item->unit ?? $item->product?->unit,
-                    'received_unit'     => null,
-                    'conversion_factor' => null,
-                    'reason'            => $item->reason,
-                    'note'              => $item->note,
-                ];
-            });
+            $items = $this->mapItemsForDisplay($txn->items);
 
             return response()->json([
                 'success'     => true,
@@ -430,6 +570,7 @@ class InventoryController extends Controller
                     'transaction_no'   => $txn->transaction_no,
                     'type'             => $txn->type,
                     'status'           => $txn->status,
+                    'branch_name'      => $txn->branch->branch_name ?? '—',
                     'reason'           => $txn->reason,
                     'processed_by'     => $txn->processed_by,
                     'approved_by'      => $txn->approved_by,

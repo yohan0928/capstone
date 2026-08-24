@@ -188,6 +188,48 @@
         </div>
     </div>
 
+    {{-- ── OVERALL AI SUMMARY (All Branches selected) ── --}}
+    <div x-show="!filters.branch_id" x-cloak class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-1">
+            <div class="flex items-center gap-2">
+                <svg class="h-5 w-5 text-[#7F5539]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                <h2 class="text-lg font-semibold text-gray-900">Overall Business Summary</h2>
+            </div>
+            <button
+                @click="generateOverallSummary()"
+                :disabled="overallSummaryLoading || !totalFeedbacks"
+                class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-md bg-[#7F5539] hover:bg-[#4A2C1D] text-white transition-colors disabled:opacity-50 self-start sm:self-auto">
+                <svg x-show="overallSummaryLoading" class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span x-text="overallSummaryLoading ? 'Generating...' : (overallSummary ? 'Regenerate' : 'Generate Overall Summary')"></span>
+            </button>
+        </div>
+        <p class="text-xs text-gray-500 mb-4"
+            x-text="`Across all branches · ${formatDate(filters.date_from)} to ${formatDate(filters.date_to)} (${spanLabel})`"></p>
+
+        <p x-show="!overallSummary && !overallSummaryLoading && totalFeedbacks" class="text-xs text-gray-400 italic">
+            Click "Generate Overall Summary" for an AI-powered synthesis of customer feedback across all branches and service categories in the selected date range.
+        </p>
+        <p x-show="!totalFeedbacks && !isLoading" class="text-xs text-gray-400 italic">
+            Generate the report above first to enable the overall summary.
+        </p>
+        <div x-show="overallSummaryLoading" class="flex items-center gap-2 py-2">
+            <div class="flex gap-1">
+                <span class="h-2 w-2 bg-[#7F5539] rounded-full animate-bounce" style="animation-delay:0ms"></span>
+                <span class="h-2 w-2 bg-[#7F5539] rounded-full animate-bounce" style="animation-delay:150ms"></span>
+                <span class="h-2 w-2 bg-[#7F5539] rounded-full animate-bounce" style="animation-delay:300ms"></span>
+            </div>
+            <span class="text-xs text-gray-400">Analyzing feedback across all branches...</span>
+        </div>
+        <p x-show="overallSummary && !overallSummaryLoading"
+            class="text-sm text-gray-700 leading-relaxed"
+            x-text="overallSummary"></p>
+    </div>
+
     {{-- ── BY BRANCH SECTION ── --}}
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -275,10 +317,10 @@
             <p class="text-sm">Click "Generate Report" to load data.</p>
         </div>
         <div class="divide-y divide-gray-100" x-show="byCategory.length">
-            <template x-for="(cat, index) in byCategory" :key="cat.category_name">
+            <template x-for="(cat, index) in byCategory" :key="cat.id ?? cat.category_name">
                 <div class="p-6">
-                    <div class="flex flex-col lg:flex-row lg:items-start gap-6">
-                        <div class="flex-1">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="w-full">
                             <div class="flex items-center gap-3 mb-3">
                                 <div class="h-9 w-9 rounded-lg bg-[#7F5539]/10 flex items-center justify-center">
                                     <svg class="h-5 w-5 text-[#7F5539]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,7 +344,7 @@
                                 <span class="text-sm font-bold text-gray-900" x-text="cat.avg_rating + ' / 5.0'"></span>
                                 <span class="text-xs text-gray-400" x-text="`(${cat.total} reviews)`"></span>
                             </div>
-                            <div class="space-y-1 max-w-xs">
+                            <div class="space-y-1 w-full">
                                 <template x-for="star in [5,4,3,2,1]" :key="star">
                                     <div class="flex items-center gap-2">
                                         <span class="text-xs text-gray-500 w-4" x-text="star + '★'"></span>
@@ -316,7 +358,7 @@
                             </div>
                         </div>
 
-                        <div class="lg:w-96">
+                        <div class="w-full">
                             <div class="border border-gray-200 rounded-lg overflow-hidden">
                                 <div class="flex items-center justify-between px-4 py-2 bg-gray-50 border-b border-gray-200">
                                     <div class="flex items-center gap-2">
@@ -378,6 +420,8 @@
             activePreset: 'week',
             isLoading:    false,
             dateError:    '',
+            overallSummary:        '',
+            overallSummaryLoading: false,
 
             init() {
                 this.byCategory = this.byCategory.map(cat => ({
@@ -401,6 +445,22 @@
 
             get totalFeedbacks() {
                 return this.byBranch.reduce((sum, b) => sum + b.total, 0);
+            },
+
+            get spanDays() {
+                if (!this.filters.date_from || !this.filters.date_to) return 0;
+                const from = new Date(this.filters.date_from);
+                const to   = new Date(this.filters.date_to);
+                const diff = Math.round((to - from) / (1000 * 60 * 60 * 24)) + 1;
+                return diff > 0 ? diff : 0;
+            },
+
+            get spanLabel() {
+                const d = this.spanDays;
+                if (!d) return '—';
+                if (d > 365) return `${(d / 365).toFixed(1)} yr range`;
+                if (d > 31)  return `${Math.round(d / 30)} mo range`;
+                return `${d} day range`;
             },
 
             setPreset(preset) {
@@ -458,6 +518,7 @@
                             summaryLoading: false,
                             has_comments:   cat.comments && cat.comments.length > 0,
                         }));
+                        this.overallSummary = '';
                     }
                 } catch (e) {
                     console.error('Report fetch error:', e);
@@ -484,6 +545,13 @@
                             context:    cat.category_name,
                             avg_rating: cat.avg_rating,
                             total:      cat.total,
+                            // Pass along the currently applied date range and
+                            // branch scope so the AI can frame the summary the
+                            // same way the overall summary does (e.g. "across
+                            // all branches over the past month").
+                            date_from:  this.filters.date_from,
+                            date_to:    this.filters.date_to,
+                            branch_id:  this.filters.branch_id || null,
                         }),
                     });
                     const data = await res.json();
@@ -492,6 +560,45 @@
                     this.byCategory[index].summary = 'Error generating summary. Please try again.';
                 } finally {
                     this.byCategory[index].summaryLoading = false;
+                }
+            },
+
+            async generateOverallSummary() {
+                if (!this.totalFeedbacks) return;
+                this.overallSummaryLoading = true;
+                this.overallSummary        = '';
+                try {
+                    const res = await fetch(`{{ route('sub_one.feedback.ai-summary-overall') }}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept':       'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        },
+                        body: JSON.stringify({
+                            date_from: this.filters.date_from,
+                            date_to:   this.filters.date_to,
+                            branch_id: this.filters.branch_id || null,
+                        }),
+                    });
+
+                    let data = null;
+                    try {
+                        data = await res.json();
+                    } catch (parseErr) {
+                        console.error('Overall summary: non-JSON response', res.status, parseErr);
+                    }
+
+                    if (!res.ok && !data?.summary) {
+                        this.overallSummary = `Error generating summary (HTTP ${res.status}). Please try again.`;
+                    } else {
+                        this.overallSummary = data?.summary || 'Unable to generate summary.';
+                    }
+                } catch (e) {
+                    console.error('Overall summary fetch failed:', e);
+                    this.overallSummary = 'Error generating summary. Please try again.';
+                } finally {
+                    this.overallSummaryLoading = false;
                 }
             },
 

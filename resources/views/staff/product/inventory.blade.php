@@ -286,8 +286,8 @@
                                         x-text="(txn.type === 'stock_in' ? '+' : '−') + (txn.total_quantity ?? 0)"></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <button @click="openViewModal(txn)" class="text-sm text-[#7F5539] hover:underline font-medium"
-                                        x-text="txn.items_count + ' item(s)'"></button>
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-semibold text-[#7F5539]"
+                                        x-text="txn.items_count"></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
@@ -738,7 +738,9 @@
             </div>
         </div>
 
-        {{-- VIEW TRANSACTION DETAILS MODAL --}}
+         {{-- ═════════════════════════════════════
+             VIEW TRANSACTION DETAILS MODAL
+        ═════════════════════════════════════════ --}}
         <div x-show="showViewModal" x-cloak
             class="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4"
             x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
@@ -802,10 +804,11 @@
                             <p class="text-sm font-medium text-gray-700 mb-2">Items</p>
                             <div class="overflow-x-auto rounded-lg border border-gray-200">
 
+                                {{-- HEADER ROW: Type | Name | Qty | Reason (stock_out only) | Note --}}
                                 <div class="grid bg-gray-50 border-b border-gray-200 text-xs font-medium text-gray-500 uppercase tracking-wider"
                                     :class="viewTransaction.type === 'stock_out'
-                                        ? 'grid-cols-[6rem_1fr_5rem_6rem_8rem]'
-                                        : 'grid-cols-[6rem_1fr_5rem_8rem]'">
+                                        ? 'grid-cols-[5.5rem_15rem_4rem_7rem_1fr]'
+                                        : 'grid-cols-[5.5rem_15rem_4rem_1fr]'">
                                     <div class="px-4 py-3">Type</div>
                                     <div class="px-4 py-3">Name</div>
                                     <div class="px-4 py-3">Qty</div>
@@ -820,8 +823,8 @@
                                         <div class="grid border-b border-gray-100 last:border-b-0 text-sm"
                                             :class="[
                                                 viewTransaction.type === 'stock_out'
-                                                    ? 'grid-cols-[6rem_1fr_5rem_6rem_8rem]'
-                                                    : 'grid-cols-[6rem_1fr_5rem_8rem]',
+                                                    ? 'grid-cols-[5.5rem_15rem_4rem_7rem_1fr]'
+                                                    : 'grid-cols-[5.5rem_15rem_4rem_1fr]',
                                                 i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                                             ]">
 
@@ -832,7 +835,7 @@
                                             </div>
 
                                             <div class="px-4 py-3 flex flex-col gap-0.5 min-w-0">
-                                                <span class="font-medium text-gray-900 break-words" x-text="item.product_name"></span>
+                                                <span class="font-medium text-gray-900 truncate block" :title="item.product_name" x-text="item.product_name"></span>
                                                 <template x-if="item.is_mto && item.ingredients && item.ingredients.length">
                                                     <button
                                                         @click="expandedRows[i] = !expandedRows[i]; expandedRows = {...expandedRows}"
@@ -851,12 +854,12 @@
 
                                             <template x-if="viewTransaction.type === 'stock_out'">
                                                 <div class="px-4 py-3">
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700"
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 whitespace-nowrap"
                                                         x-text="reasonLabel(item.reason)"></span>
                                                 </div>
                                             </template>
 
-                                            <div class="px-4 py-3 text-gray-500 break-words text-sm" x-text="item.note || '—'"></div>
+                                            <div class="px-4 py-3 text-gray-500 break-words text-sm leading-relaxed" x-text="item.note || '—'"></div>
                                         </div>
 
                                         <template x-if="expandedRows[i] && item.is_mto && item.ingredients && item.ingredients.length">
@@ -864,8 +867,8 @@
                                                 <template x-for="(ing, j) in item.ingredients" :key="'ing-' + i + '-' + j">
                                                     <div class="grid border-b border-amber-100 last:border-b-0 bg-amber-50 border-l-2 border-l-amber-300 text-sm"
                                                         :class="viewTransaction.type === 'stock_out'
-                                                            ? 'grid-cols-[6rem_1fr_5rem_6rem_8rem]'
-                                                            : 'grid-cols-[6rem_1fr_5rem_8rem]'">
+                                                            ? 'grid-cols-[5.5rem_15rem_4rem_7rem_1fr]'
+                                                            : 'grid-cols-[5.5rem_15rem_4rem_1fr]'">
 
                                                         <div class="px-4 py-2 flex items-start pt-2.5">
                                                             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Ingredient</span>
@@ -880,12 +883,12 @@
 
                                                         <template x-if="viewTransaction.type === 'stock_out'">
                                                             <div class="px-4 py-2">
-                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700"
+                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-700 whitespace-nowrap"
                                                                     x-text="reasonLabel(ing.reason)"></span>
                                                             </div>
                                                         </template>
 
-                                                        <div class="px-4 py-2 text-xs text-gray-400 break-words" x-text="ing.note || '—'"></div>
+                                                        <div class="px-4 py-2 text-xs text-gray-400 break-words leading-relaxed" x-text="ing.note || '—'"></div>
                                                     </div>
                                                 </template>
                                             </div>
@@ -1138,7 +1141,7 @@
                     return result;
                 },
                 reasonLabel(r) {
-                    return { expired: 'Expired', damaged: 'Damaged', pulled_out: 'Pulled out', sold: 'Sold' }[r] ?? r ?? '—';
+                    return { expired: 'Expired', damaged: 'Damaged', pulled_out: 'Pulled out', sold: 'Sold', used_in_mto: 'MTO Ingredient' }[r] ?? r ?? '—';
                 },
                 addBodyClass()    { document.body.classList.add('modal-open'); },
                 removeBodyClass() { document.body.classList.remove('modal-open'); },

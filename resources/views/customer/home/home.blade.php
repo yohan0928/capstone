@@ -7,7 +7,7 @@
     <header class="bg-white sticky top-[63px] z-[50] transition-all duration-300 shadow-sm" id="main-header">
         <div class="container mx-auto px-4">
             <div class="flex flex-col md:flex-row justify-between items-center py-3 space-y-3 md:space-y-0">
-                <!-- Location Bar - SAFE CHECK -->
+                <!-- Location Bar -->
                 <div class="flex items-center gap-3 w-full md:w-auto">
                     <div class="flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2 border border-gray-200 hover:border-[#7f5539] transition-colors cursor-pointer min-h-[44px] flex-1 md:flex-initial" onclick="toggleLocationDropdown()">
                         <i class="fas fa-location-dot text-[#7f5539] text-sm"></i>
@@ -27,7 +27,6 @@
                         <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
                     </div>
                     
-                    <!-- Location Status Badge - SAFE CHECK -->
                     @if(isset($customerLocation) && isset($customerLocation['source']) && $customerLocation['source'] != 'default' && $customerLocation['source'] != 'unknown')
                         <div class="flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-xs">
                             <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
@@ -48,11 +47,6 @@
                             @if($hasUserData && $recommendedBranch)
                                 <a href="#recommended-branch" class="nav-link scroll-link active text-[#7f5539] font-medium transition-colors px-3 py-1.5 whitespace-nowrap bg-[#7f5539]/10 hover:bg-[#7f5539]/20 rounded-full flex items-center min-h-[44px] md:min-h-0" data-section="recommended-branch">
                                     <i class="fas fa-star mr-1.5 text-yellow-500"></i> Recommended
-                                    @if(isset($recommendedBranch['recommendation_type']))
-                                        <span class="ml-1 text-[8px] bg-[#7f5539]/20 text-[#7f5539] px-1.5 py-0.5 rounded-full">
-                                            {{ $recommendedBranch['recommendation_type'] == 'hybrid' ? 'Hybrid' : 'Content' }}
-                                        </span>
-                                    @endif
                                 </a>
                             @endif
                             @if(!empty($topBranches['branches']))
@@ -83,7 +77,6 @@
                 </button>
             </div>
             
-            <!-- Current Location Status -->
             <div class="bg-gray-50 rounded-xl p-4 mb-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-3">
@@ -102,28 +95,14 @@
                                 @if(isset($customerLocation) && isset($customerLocation['source']) && $customerLocation['source'] != 'default' && $customerLocation['source'] != 'unknown')
                                     @if(isset($customerLocation['full_address']) && !empty($customerLocation['full_address']))
                                         <span class="text-gray-700">{{ $customerLocation['full_address'] }}</span>
-                                        <span class="text-gray-400 ml-2">
-                                            ({{ ucfirst($customerLocation['source']) }})
-                                        </span>
+                                        <span class="text-gray-400 ml-2">({{ ucfirst($customerLocation['source']) }})</span>
                                     @elseif(isset($customerLocation['place_name']) && !empty($customerLocation['place_name']))
                                         <span class="text-gray-700">{{ $customerLocation['place_name'] }}</span>
-                                        <span class="text-gray-400 ml-2">
-                                            ({{ ucfirst($customerLocation['source']) }})
-                                        </span>
-                                    @else
-                                        {{ number_format(isset($customerLocation['latitude']) ? $customerLocation['latitude'] : 0, 4) }}, {{ number_format(isset($customerLocation['longitude']) ? $customerLocation['longitude'] : 0, 4) }}
-                                        <span class="text-gray-400 ml-2">
-                                            ({{ ucfirst(isset($customerLocation['source']) ? $customerLocation['source'] : 'unknown') }})
-                                        </span>
+                                        <span class="text-gray-400 ml-2">({{ ucfirst($customerLocation['source']) }})</span>
                                     @endif
                                     @if(isset($customerLocation['city']) && !empty($customerLocation['city']))
                                         <br>
-                                        <span class="text-xs text-gray-400">
-                                            📍 {{ $customerLocation['city'] }}{{ isset($customerLocation['state']) && !empty($customerLocation['state']) ? ', ' . $customerLocation['state'] : '' }}
-                                            @if(isset($customerLocation['postcode']) && !empty($customerLocation['postcode']))
-                                                - {{ $customerLocation['postcode'] }}
-                                            @endif
-                                        </span>
+                                        <span class="text-xs text-gray-400">📍 {{ $customerLocation['city'] }}{{ isset($customerLocation['state']) && !empty($customerLocation['state']) ? ', ' . $customerLocation['state'] : '' }}</span>
                                     @endif
                                 @else
                                     Please share your location for accurate recommendations
@@ -138,32 +117,17 @@
                                 Clear
                             </button>
                         @endif
-                        @if(($hasUserData && $recommendedBranch) || !$hasUserData)
-                            <button onclick="getCustomerLocation()" 
-                                class="text-sm bg-[#7f5539] text-white px-4 py-1.5 rounded-lg hover:bg-[#6b4f3c] transition-colors">
-                                <i class="fas fa-sync-alt mr-1.5"></i> Update
-                            </button>
-                        @endif
+                        <button onclick="getCustomerLocation()" 
+                            class="text-sm bg-[#7f5539] text-white px-4 py-1.5 rounded-lg hover:bg-[#6b4f3c] transition-colors">
+                            <i class="fas fa-sync-alt mr-1.5"></i> Update
+                        </button>
                     </div>
                 </div>
             </div>
             
-            <!-- Location Info -->
             <div class="text-xs text-gray-400 flex items-center gap-4 flex-wrap">
                 <span><i class="far fa-clock mr-1"></i> Updates every 30 min</span>
                 <span><i class="fas fa-shield-alt mr-1"></i> Your privacy is protected</span>
-                @if(isset($customerLocation) && isset($customerLocation['expires_at']) && isset($customerLocation['source']) && $customerLocation['source'] != 'default' && $customerLocation['source'] != 'unknown')
-                    <span class="text-yellow-600">
-                        <i class="fas fa-hourglass-half mr-1"></i>
-                        Expires: {{ \Carbon\Carbon::parse($customerLocation['expires_at'])->format('h:i A') }}
-                    </span>
-                @endif
-                @if(isset($customerLocation['house_number']) && !empty($customerLocation['house_number']) && isset($customerLocation['road']) && !empty($customerLocation['road']))
-                    <span class="text-gray-400">
-                        <i class="fas fa-map-pin mr-1"></i>
-                        {{ $customerLocation['house_number'] }} {{ $customerLocation['road'] }}
-                    </span>
-                @endif
             </div>
         </div>
     </div>
@@ -186,14 +150,6 @@
                 <p class="text-gray-600 mb-4 max-w-md mx-auto text-xs">
                     @if($hasUserData && $recommendedBranch)
                         We've found the best match for you based on your preferences and location
-                        @if(isset($recommendedBranch['recommendation_type']))
-                            <span class="block text-[10px] text-[#7f5539] mt-1">
-                                Using {{ ucfirst($recommendedBranch['recommendation_type']) }} Recommendation
-                                @if($recommendedBranch['recommendation_type'] == 'hybrid')
-                                    (Content-Based + Collaborative Filtering)
-                                @endif
-                            </span>
-                        @endif
                     @elseif($hasUserData && !$recommendedBranch)
                         We couldn't find a branch that matches your preferences. Update your preferences to get better recommendations.
                     @elseif($hasUserData)
@@ -219,7 +175,7 @@
                     </form>
                 </div>
 
-                <!-- Location Button - SAFE CHECK -->
+                <!-- Location Button -->
                 @if(($hasUserData && $recommendedBranch) || !$hasUserData)
                     <div class="flex flex-col items-center mt-2">
                         <div class="flex flex-wrap items-center justify-center gap-3">
@@ -289,7 +245,7 @@
     </section>
 
     <!-- ============================================================ -->
-    <!-- SECTION: RECOMMENDED BRANCH (ONLY 1)                         -->
+    <!-- SECTION: RECOMMENDED BRANCH                                   -->
     <!-- ============================================================ -->
     @if($hasUserData && $recommendedBranch)
         <section id="recommended-branch" class="py-8 bg-white scroll-section">
@@ -297,44 +253,9 @@
                 <!-- Section Header -->
                 <div class="flex flex-col md:flex-row md:items-end md:justify-between mb-8">
                     <div>
-                        <div class="flex items-center gap-2 mb-2 flex-wrap">
-                            <span class="px-3 py-1 bg-yellow-50 text-yellow-700 text-xs font-semibold rounded-full">
-                                <i class="fas fa-star mr-1"></i> Best Match
-                            </span>
-                            @if(isset($customerLocation) && $customerLocation['source'] != 'default' && $customerLocation['source'] != 'unknown')
-                                <span class="px-3 py-1 bg-green-50 text-green-700 text-xs font-semibold rounded-full">
-                                    <i class="fas fa-location-dot mr-1"></i> 
-                                    @if(isset($customerLocation['place_name']))
-                                        {{ $customerLocation['place_name'] }}
-                                    @else
-                                        Your Location
-                                    @endif
-                                </span>
-                            @endif
-                            @if($preferenceStrength > 0)
-                                <span class="px-3 py-1 bg-purple-50 text-purple-700 text-xs font-semibold rounded-full">
-                                    <i class="fas fa-chart-simple mr-1"></i> {{ round($preferenceStrength * 100) }}% Complete
-                                </span>
-                            @endif
-                            @if(isset($recommendedBranch['recommendation_type']))
-                                <span class="px-3 py-1 {{ $recommendedBranch['recommendation_type'] == 'hybrid' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-700' }} text-xs font-semibold rounded-full">
-                                    <i class="fas fa-code-branch mr-1"></i> 
-                                    {{ ucfirst($recommendedBranch['recommendation_type']) }}
-                                    @if($recommendedBranch['recommendation_type'] == 'hybrid')
-                                        <span class="text-[10px] font-normal">(60% Content + 40% Collaborative)</span>
-                                    @endif
-                                </span>
-                            @endif
-                        </div>
                         <h2 class="text-2xl md:text-3xl font-bold text-[#4a3429]">
-                            🎯 Recommended Workspace
+                            Recommended Workspace
                         </h2>
-                        <p class="text-gray-500 text-sm mt-1">
-                            Based on your preferences and location
-                            @if($recommendedBranch['match_percentage'] > 0)
-                                <span class="text-[#7f5539] font-medium">({{ $recommendedBranch['match_percentage'] }}% match)</span>
-                            @endif
-                        </p>
                     </div>
                     
                     <a href="{{ route('sub_three.home.preferences.form') }}" 
@@ -354,20 +275,27 @@
                     $recommendationType = $recommendedBranch['recommendation_type'] ?? 'content_based';
                     $matchedFeatures = $recommendedBranch['matched_features'] ?? [];
                     
-                    $priorityCategories = [
-                        'location' => ['label' => '📍 Location', 'weight' => 30, 'icon' => 'fa-location-dot', 'color' => 'green'],
-                        'features' => ['label' => '✨ Features', 'weight' => 20, 'icon' => 'fa-cubes', 'color' => 'blue'],
-                        'rate' => ['label' => '💰 Rate', 'weight' => 15, 'icon' => 'fa-tag', 'color' => 'yellow'],
-                        'space_type' => ['label' => '🪑 Space Type', 'weight' => 12, 'icon' => 'fa-chair', 'color' => 'purple'],
-                        'time_slot' => ['label' => '🕐 Time Slot', 'weight' => 10, 'icon' => 'fa-clock', 'color' => 'orange'],
-                        'duration' => ['label' => '⏱️ Duration', 'weight' => 8, 'icon' => 'fa-hourglass-half', 'color' => 'pink'],
-                        'rating' => ['label' => '⭐ Rating', 'weight' => 5, 'icon' => 'fa-star', 'color' => 'amber'],
-                    ];
-                    
+                    // Normalize and deduplicate branch features for display
                     $allBranchFeatures = [];
                     if ($branch->features) {
-                        $allBranchFeatures = array_map('trim', explode(',', $branch->features));
-                        $allBranchFeatures = array_filter($allBranchFeatures);
+                        $rawFeatures = array_map('trim', explode(',', $branch->features));
+                        // Normalize features for consistent display
+                        $normalizationMap = [
+                            'wi-fi' => 'Wi-Fi',
+                            'wifi' => 'Wi-Fi',
+                            'wi fi' => 'Wi-Fi',
+                            'free parking' => 'Parking',
+                            'parking' => 'Parking',
+                            'free coffee' => 'Coffee',
+                            'coffee' => 'Coffee',
+                        ];
+                        foreach ($rawFeatures as $feature) {
+                            $lower = strtolower(trim($feature));
+                            $normalized = $normalizationMap[$lower] ?? $feature;
+                            if (!in_array($normalized, $allBranchFeatures)) {
+                                $allBranchFeatures[] = $normalized;
+                            }
+                        }
                     }
                     
                     $distance = $recommendedBranch['distance'] ?? null;
@@ -375,7 +303,12 @@
                     $firstCategory = $firstService ? $firstService->serviceCategory : null;
                 @endphp
 
-                <div class="group bg-white rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-[#7f5539]/20 hover:border-[#7f5539]/40 max-w-4xl mx-auto">
+                <!-- Branch Card -->
+                <div class="group bg-white rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 border-2 
+                    {{ $recommendationType == 'hybrid' ? 'border-blue-500/30 hover:border-blue-500/50' : 
+                       ($recommendationType == 'collaborative_only' ? 'border-purple-500/30 hover:border-purple-500/50' : 
+                       'border-[#7f5539]/20 hover:border-[#7f5539]/40') }} 
+                    max-w-4xl mx-auto">
                     <div class="grid grid-cols-1 md:grid-cols-5">
                         <!-- Image Section -->
                         <div class="md:col-span-2 h-64 md:h-auto relative overflow-hidden">
@@ -394,24 +327,33 @@
                             
                             <!-- Match Percentage Badge -->
                             <div class="absolute top-4 right-4">
-                                <div class="bg-black/70 backdrop-blur-sm text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 {{ $matchPercentage >= 80 ? 'border-green-400' : ($matchPercentage >= 60 ? 'border-blue-400' : 'border-yellow-400') }} border-2">
+                                <div class="bg-black/70 backdrop-blur-sm text-white text-sm font-bold px-4 py-2 rounded-full shadow-lg flex items-center gap-2 
+                                    {{ $matchPercentage >= 80 ? 'border-green-400' : ($matchPercentage >= 60 ? 'border-blue-400' : 'border-yellow-400') }} border-2">
                                     <i class="fas fa-star text-yellow-400"></i>
                                     {{ $matchPercentage }}% Match
                                 </div>
+                            </div>
+
+                            <!-- Recommendation Type Badge (on image) -->
+                            <div class="absolute top-4 left-4">
+                                <span class="px-3 py-1 text-[10px] rounded-full 
+                                    {{ $recommendationType == 'hybrid' ? 'bg-blue-500/90' : 
+                                       ($recommendationType == 'collaborative_only' ? 'bg-purple-500/90' : 
+                                       'bg-gray-500/90') }} 
+                                    backdrop-blur-sm text-white flex items-center gap-1">
+                                    <i class="fas 
+                                        {{ $recommendationType == 'hybrid' ? 'fa-code-branch' : 
+                                           ($recommendationType == 'collaborative_only' ? 'fa-users' : 
+                                           'fa-sliders-h') }} text-[8px]"></i>
+                                    {{ ucfirst($recommendationType == 'collaborative_only' ? 'Collaborative' : 
+                                       ($recommendationType == 'hybrid' ? 'Hybrid' : 'Content')) }}
+                                </span>
                             </div>
 
                             <!-- Status Badge -->
                             <div class="absolute bottom-4 left-4">
                                 <span class="px-3 py-1 text-xs rounded-full {{ $branch->branch_status ? 'bg-green-500/90 backdrop-blur-sm text-white' : 'bg-red-500/90 backdrop-blur-sm text-white' }}">
                                     {{ $branch->branch_status ? 'Open Now' : 'Closed' }}
-                                </span>
-                            </div>
-
-                            <!-- Recommendation Type Badge -->
-                            <div class="absolute top-4 left-4">
-                                <span class="px-3 py-1 text-[10px] rounded-full {{ $recommendationType == 'hybrid' ? 'bg-blue-500/90' : 'bg-gray-500/90' }} backdrop-blur-sm text-white flex items-center gap-1">
-                                    <i class="fas fa-code-branch text-[8px]"></i>
-                                    {{ ucfirst($recommendationType) }}
                                 </span>
                             </div>
 
@@ -468,25 +410,10 @@
                                 </div>
                             @endif
 
-                            <!-- Match Reason -->
-                            @if($matchReason)
-                                <div class="mb-4 p-3 bg-[#f8f5f2] rounded-xl border border-[#e6ddd4]">
-                                    <p class="text-sm text-gray-700 flex items-start gap-2">
-                                        <i class="fas fa-lightbulb text-[#7f5539] mt-0.5"></i>
-                                        <span>{{ $matchReason }}</span>
-                                    </p>
-                                    @if($recommendationType == 'hybrid' && isset($collaborativeScore))
-                                        <p class="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                                            <i class="fas fa-users text-[10px]"></i>
-                                            Collaborative score: {{ round($collaborativeScore) }}% from similar users
-                                        </p>
-                                    @endif
-                                </div>
-                            @endif
-
                             <!-- Priority Score Breakdown -->
                             <div class="mb-4 bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
                                 <button onclick="togglePriorityBreakdown()" 
+                                    type="button"
                                     class="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-100/50 transition-colors group">
                                     <div class="flex items-center gap-2">
                                         <i class="fas fa-chart-simple text-[#7f5539]"></i>
@@ -504,103 +431,36 @@
                                 </button>
                                 
                                 <div id="priorityBreakdownContent" class="px-4 pb-4 pt-2 hidden">
-                                    <!-- Priority Order Legend -->
-                                    <div class="flex flex-wrap items-center gap-1.5 mb-3 text-[10px]">
-                                        <span class="text-gray-400 font-medium">Priority order:</span>
-                                        @php
-                                            $priorityOrder = ['location', 'features', 'rate', 'space_type', 'time_slot', 'duration', 'rating'];
-                                            $priorityColors = [
-                                                'location' => 'border-green-300 bg-green-50 text-green-700',
-                                                'features' => 'border-blue-300 bg-blue-50 text-blue-700',
-                                                'rate' => 'border-yellow-300 bg-yellow-50 text-yellow-700',
-                                                'space_type' => 'border-purple-300 bg-purple-50 text-purple-700',
-                                                'time_slot' => 'border-orange-300 bg-orange-50 text-orange-700',
-                                                'duration' => 'border-pink-300 bg-pink-50 text-pink-700',
-                                                'rating' => 'border-amber-300 bg-amber-50 text-amber-700'
-                                            ];
-                                            $priorityIcons = [
-                                                'location' => 'fa-location-dot',
-                                                'features' => 'fa-cubes',
-                                                'rate' => 'fa-tag',
-                                                'space_type' => 'fa-chair',
-                                                'time_slot' => 'fa-clock',
-                                                'duration' => 'fa-hourglass-half',
-                                                'rating' => 'fa-star'
-                                            ];
-                                        @endphp
-                                        @foreach($priorityOrder as $key)
-                                            @if(isset($priorityCategories[$key]))
-                                                <span class="flex items-center gap-1 px-2 py-0.5 rounded-full border {{ $priorityColors[$key] ?? 'border-gray-300 bg-gray-50 text-gray-600' }}">
-                                                    <i class="fas {{ $priorityIcons[$key] ?? 'fa-circle' }} text-[8px]"></i>
-                                                    {{ $priorityCategories[$key]['label'] }}
-                                                    <span class="text-[8px] opacity-60">({{ $priorityCategories[$key]['weight'] }}%)</span>
-                                                </span>
-                                                @if(!$loop->last)
-                                                    <i class="fas fa-arrow-right text-gray-300 text-[8px]"></i>
-                                                @endif
-                                            @endif
-                                        @endforeach
-                                    </div>
-                                    
-                                    <!-- Detailed Score Cards -->
-                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        @foreach($priorityCategories as $key => $category)
-                                            @php
-                                                $score = $scores[$key] ?? 0;
-                                                $scoreColor = $score >= 80 ? 'text-green-600' : ($score >= 60 ? 'text-blue-600' : ($score >= 40 ? 'text-yellow-600' : 'text-gray-400'));
-                                                $barColor = $score >= 80 ? 'bg-green-500' : ($score >= 60 ? 'bg-blue-500' : ($score >= 40 ? 'bg-yellow-500' : 'bg-gray-300'));
-                                                $barWidth = round($score);
-                                                
-                                                $iconMap = [
-                                                    'location' => 'fa-location-dot',
-                                                    'features' => 'fa-cubes',
-                                                    'rate' => 'fa-tag',
-                                                    'space_type' => 'fa-chair',
-                                                    'time_slot' => 'fa-clock',
-                                                    'duration' => 'fa-hourglass-half',
-                                                    'rating' => 'fa-star'
-                                                ];
-                                                $icon = $iconMap[$key] ?? 'fa-circle';
-                                                $iconColor = $score >= 80 ? 'text-green-500' : ($score >= 60 ? 'text-blue-500' : ($score >= 40 ? 'text-yellow-500' : 'text-gray-400'));
-                                            @endphp
-                                            <div class="bg-white rounded-lg p-3 border border-gray-100 hover:shadow-sm transition-shadow group/card">
-                                                <div class="flex items-center justify-between mb-1.5">
-                                                    <div class="flex items-center gap-2">
-                                                        <div class="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center">
-                                                            <i class="fas {{ $icon }} {{ $iconColor }} text-xs"></i>
-                                                        </div>
-                                                        <span class="text-xs font-medium text-gray-700">{{ $category['label'] }}</span>
-                                                        <span class="text-[10px] text-gray-400">({{ $category['weight'] }}%)</span>
+                                    <!-- Content Based Score Display -->
+                                    @if($recommendationType == 'content_based' && isset($contentScore))
+                                        <div class="mb-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg border border-gray-200">
+                                            <div class="flex items-center justify-between text-xs">
+                                                <span class="font-semibold text-gray-700">📊 Content-Based Score</span>
+                                                <span class="text-[10px] text-gray-500">Based on your preferences</span>
+                                            </div>
+                                            <div class="flex items-center gap-4 mt-2">
+                                                <div class="flex-1">
+                                                    <div class="flex items-center justify-between text-[10px] text-gray-600">
+                                                        <span>Content Score</span>
+                                                        <span>{{ round($contentScore) }}%</span>
                                                     </div>
-                                                    <span class="text-sm font-bold {{ $scoreColor }}">{{ $barWidth }}%</span>
-                                                </div>
-                                                <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                                    <div class="h-full {{ $barColor }} rounded-full transition-all duration-1000 ease-out priority-bar" 
-                                                         style="width: 0%"
-                                                         data-width="{{ $barWidth }}%">
+                                                    <div class="h-1.5 bg-gray-200 rounded-full mt-0.5">
+                                                        <div class="h-full bg-blue-500 rounded-full" style="width: {{ round($contentScore) }}%"></div>
                                                     </div>
-                                                </div>
-                                                <div class="mt-1 text-[10px] {{ $scoreColor }}">
-                                                    @if($score >= 80)
-                                                        <i class="fas fa-check-circle mr-1"></i> Excellent match
-                                                    @elseif($score >= 60)
-                                                        <i class="fas fa-check-circle mr-1"></i> Good match
-                                                    @elseif($score >= 40)
-                                                        <i class="fas fa-minus-circle mr-1"></i> Partial match
-                                                    @else
-                                                        <i class="fas fa-times-circle mr-1"></i> Low match
-                                                    @endif
                                                 </div>
                                             </div>
-                                        @endforeach
-                                    </div>
+                                            <p class="text-[10px] text-gray-400 mt-2">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Make {{ 3 - ($bookingCount ?? 0) }} more bookings to unlock collaborative filtering.
+                                            </p>
+                                        </div>
+                                    @endif
 
                                     <!-- Hybrid Score Display -->
                                     @if($recommendationType == 'hybrid' && isset($contentScore) && isset($collaborativeScore))
-                                        <div class="mt-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                                        <div class="mb-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
                                             <div class="flex items-center justify-between text-xs">
                                                 <span class="font-semibold text-gray-700">🧠 Hybrid Score Breakdown</span>
-                                                <span class="text-[10px] text-gray-500">60% Content + 40% Collaborative</span>
                                             </div>
                                             <div class="flex items-center gap-4 mt-2">
                                                 <div class="flex-1">
@@ -636,14 +496,105 @@
                                         </div>
                                     @endif
                                     
-                                    @if($matchReason)
-                                        <div class="mt-3 p-2.5 bg-[#f8f5f2] rounded-lg border border-[#e6ddd4]">
-                                            <p class="text-xs text-gray-600 flex items-start gap-1.5">
-                                                <i class="fas fa-lightbulb text-[#7f5539] mt-0.5 text-[10px]"></i>
-                                                <span>{{ $matchReason }}</span>
+                                    <!-- Collaborative Only Display -->
+                                    @if($recommendationType == 'collaborative_only' && isset($recommendedBranch['collaborative_data']))
+                                        <div class="mb-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-lg border border-purple-200">
+                                            <div class="flex items-center justify-between text-xs">
+                                                <span class="font-semibold text-gray-700">🧠 Collaborative Filtering Only</span>
+                                                <span class="text-[10px] text-gray-500">
+                                                    {{ $recommendedBranch['collaborative_data']['similar_users_count'] ?? 0 }} similar users
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center gap-4 mt-2">
+                                                <div class="flex-1">
+                                                    <div class="flex items-center justify-between text-[10px] text-gray-600">
+                                                        <span>Predicted Rating</span>
+                                                        <span>{{ $recommendedBranch['collaborative_data']['predicted_rating'] ?? 0 }} / 5.0</span>
+                                                    </div>
+                                                    <div class="h-1.5 bg-gray-200 rounded-full mt-0.5">
+                                                        <div class="h-full bg-purple-500 rounded-full" style="width: {{ $recommendedBranch['collaborative_data']['score'] ?? 0 }}%"></div>
+                                                    </div>
+                                                </div>
+                                                <div class="flex-1">
+                                                    <div class="flex items-center justify-between text-[10px] text-gray-600">
+                                                        <span>Location Boost</span>
+                                                        <span>{{ $scores['location'] ?? 0 }}%</span>
+                                                    </div>
+                                                    <div class="h-1.5 bg-gray-200 rounded-full mt-0.5">
+                                                        <div class="h-full bg-green-500 rounded-full" style="width: {{ $scores['location'] ?? 0 }}%"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <p class="text-[10px] text-gray-400 mt-2">
+                                                <i class="fas fa-info-circle mr-1"></i>
+                                                Since you haven't set preferences, recommendations are based on users with similar booking patterns.
+                                                <a href="{{ route('sub_three.home.preferences.form') }}" class="text-purple-600 hover:underline">Set preferences →</a>
                                             </p>
                                         </div>
                                     @endif
+                                    
+                                    <!-- Detailed Score Cards -->
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        @php
+                                            $priorityCategories = [
+                                                'location' => ['label' => '📍 Location', 'weight' => 30, 'icon' => 'fa-location-dot', 'color' => 'green'],
+                                                'features' => ['label' => '✨ Features', 'weight' => 20, 'icon' => 'fa-cubes', 'color' => 'blue'],
+                                                'rate' => ['label' => '💰 Rate', 'weight' => 15, 'icon' => 'fa-tag', 'color' => 'yellow'],
+                                                'space_type' => ['label' => '🪑 Space Type', 'weight' => 12, 'icon' => 'fa-chair', 'color' => 'purple'],
+                                                'time_slot' => ['label' => '🕐 Time Slot', 'weight' => 10, 'icon' => 'fa-clock', 'color' => 'orange'],
+                                                'duration' => ['label' => '⏱️ Duration', 'weight' => 8, 'icon' => 'fa-hourglass-half', 'color' => 'pink'],
+                                                'rating' => ['label' => '⭐ Rating', 'weight' => 5, 'icon' => 'fa-star', 'color' => 'amber'],
+                                            ];
+                                            $iconMap = [
+                                                'location' => 'fa-location-dot',
+                                                'features' => 'fa-cubes',
+                                                'rate' => 'fa-tag',
+                                                'space_type' => 'fa-chair',
+                                                'time_slot' => 'fa-clock',
+                                                'duration' => 'fa-hourglass-half',
+                                                'rating' => 'fa-star'
+                                            ];
+                                        @endphp
+                                        @foreach($priorityCategories as $key => $category)
+                                            @php
+                                                $score = $scores[$key] ?? 0;
+                                                $scoreColor = $score >= 80 ? 'text-green-600' : ($score >= 60 ? 'text-blue-600' : ($score >= 40 ? 'text-yellow-600' : 'text-gray-400'));
+                                                $barColor = $score >= 80 ? 'bg-green-500' : ($score >= 60 ? 'bg-blue-500' : ($score >= 40 ? 'bg-yellow-500' : 'bg-gray-300'));
+                                                $barWidth = round($score);
+                                                $icon = $iconMap[$key] ?? 'fa-circle';
+                                                $iconColor = $score >= 80 ? 'text-green-500' : ($score >= 60 ? 'text-blue-500' : ($score >= 40 ? 'text-yellow-500' : 'text-gray-400'));
+                                            @endphp
+                                            <div class="bg-white rounded-lg p-3 border border-gray-100 hover:shadow-sm transition-shadow group/card">
+                                                <div class="flex items-center justify-between mb-1.5">
+                                                    <div class="flex items-center gap-2">
+                                                        <div class="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center">
+                                                            <i class="fas {{ $icon }} {{ $iconColor }} text-xs"></i>
+                                                        </div>
+                                                        <span class="text-xs font-medium text-gray-700">{{ $category['label'] }}</span>
+                                                        <span class="text-[10px] text-gray-400">({{ $category['weight'] }}%)</span>
+                                                    </div>
+                                                    <span class="text-sm font-bold {{ $scoreColor }}">{{ $barWidth }}%</span>
+                                                </div>
+                                                <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div class="h-full {{ $barColor }} rounded-full transition-all duration-1000 ease-out priority-bar" 
+                                                         style="width: 0%"
+                                                         data-width="{{ $barWidth }}%">
+                                                    </div>
+                                                </div>
+                                                <div class="mt-1 text-[10px] {{ $scoreColor }}">
+                                                    @if($score >= 80)
+                                                        <i class="fas fa-check-circle mr-1"></i> Excellent match
+                                                    @elseif($score >= 60)
+                                                        <i class="fas fa-check-circle mr-1"></i> Good match
+                                                    @elseif($score >= 40)
+                                                        <i class="fas fa-minus-circle mr-1"></i> Partial match
+                                                    @else
+                                                        <i class="fas fa-times-circle mr-1"></i> Low match
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
                                 </div>
                             </div>
 
@@ -652,6 +603,22 @@
                                 <div class="mb-3">
                                     <div class="flex flex-wrap gap-1.5 features-container" id="features-recommended-{{ $branch->id }}">
                                         @php
+                                            // Normalize matched features for comparison
+                                            $normalizedMatchedFeatures = [];
+                                            $normalizationMap = [
+                                                'wi-fi' => 'Wi-Fi',
+                                                'wifi' => 'Wi-Fi',
+                                                'wi fi' => 'Wi-Fi',
+                                                'free parking' => 'Parking',
+                                                'parking' => 'Parking',
+                                                'free coffee' => 'Coffee',
+                                                'coffee' => 'Coffee',
+                                            ];
+                                            foreach ($matchedFeatures as $mf) {
+                                                $lower = strtolower(trim($mf));
+                                                $normalizedMatchedFeatures[] = $normalizationMap[$lower] ?? $mf;
+                                            }
+                                            
                                             $displayFeatures = array_slice($allBranchFeatures, 0, 5);
                                             $hiddenFeatures = array_slice($allBranchFeatures, 5);
                                             $hasMoreFeatures = count($hiddenFeatures) > 0;
@@ -659,7 +626,7 @@
                                         
                                         @foreach ($displayFeatures as $feature)
                                             @php
-                                                $isMatched = in_array(strtolower($feature), array_map('strtolower', $matchedFeatures));
+                                                $isMatched = in_array($feature, $normalizedMatchedFeatures);
                                             @endphp
                                             <span class="inline-block text-xs px-2.5 py-1 rounded-full {{ $isMatched ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-600' }}">
                                                 @if ($isMatched)
@@ -671,6 +638,7 @@
                                         
                                         @if ($hasMoreFeatures)
                                             <button onclick="toggleFeatures({{ $branch->id }})" 
+                                                type="button"
                                                 class="inline-block text-xs px-2.5 py-1 rounded-full bg-gray-100 text-[#7f5539] hover:bg-gray-200 transition-colors cursor-pointer features-toggle-btn"
                                                 data-branch="{{ $branch->id }}">
                                                 +{{ count($hiddenFeatures) }} more
@@ -678,7 +646,7 @@
                                             <div class="hidden-features hidden w-full mt-1 flex flex-wrap gap-1.5" id="hidden-features-recommended-{{ $branch->id }}">
                                                 @foreach ($hiddenFeatures as $feature)
                                                     @php
-                                                        $isMatched = in_array(strtolower($feature), array_map('strtolower', $matchedFeatures));
+                                                        $isMatched = in_array($feature, $normalizedMatchedFeatures);
                                                     @endphp
                                                     <span class="inline-block text-xs px-2.5 py-1 rounded-full {{ $isMatched ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-600' }}">
                                                         @if ($isMatched)
@@ -794,10 +762,26 @@
                             $firstService = $branch->serviceNames->first();
                             $firstCategory = $firstService ? $firstService->serviceCategory : null;
                             
+                            // Normalize and deduplicate branch features for display
                             $allBranchFeatures = [];
                             if ($branch->features) {
-                                $allBranchFeatures = array_map('trim', explode(',', $branch->features));
-                                $allBranchFeatures = array_filter($allBranchFeatures);
+                                $rawFeatures = array_map('trim', explode(',', $branch->features));
+                                $normalizationMap = [
+                                    'wi-fi' => 'Wi-Fi',
+                                    'wifi' => 'Wi-Fi',
+                                    'wi fi' => 'Wi-Fi',
+                                    'free parking' => 'Parking',
+                                    'parking' => 'Parking',
+                                    'free coffee' => 'Coffee',
+                                    'coffee' => 'Coffee',
+                                ];
+                                foreach ($rawFeatures as $feature) {
+                                    $lower = strtolower(trim($feature));
+                                    $normalized = $normalizationMap[$lower] ?? $feature;
+                                    if (!in_array($normalized, $allBranchFeatures)) {
+                                        $allBranchFeatures[] = $normalized;
+                                    }
+                                }
                             }
                             
                             $rankColors = [
@@ -907,6 +891,7 @@
                                             
                                             @if ($hasMoreFeatures)
                                                 <button onclick="toggleTopFeatures({{ $branch->id }})" 
+                                                    type="button"
                                                     class="inline-block text-xs px-2.5 py-1 rounded-full bg-gray-100 text-[#7f5539] hover:bg-gray-200 transition-colors cursor-pointer features-toggle-btn"
                                                     data-branch="{{ $branch->id }}">
                                                     +{{ count($hiddenFeatures) }} more
@@ -1195,9 +1180,74 @@
 @endpush
 
 @push('scripts')
-    <script>
+<script>
     // ================================================================
-    // COMPLETE LOCATION HANDLER WITH SAFE CHECKS
+    // TOGGLE FUNCTIONS
+    // ================================================================
+    
+    function togglePriorityBreakdown() {
+        const content = document.getElementById('priorityBreakdownContent');
+        const icon = document.getElementById('accordionIcon');
+        
+        if (content) {
+            content.classList.toggle('hidden');
+            if (icon) {
+                icon.classList.toggle('rotate-180');
+            }
+            
+            if (!content.classList.contains('hidden')) {
+                setTimeout(function() {
+                    document.querySelectorAll('.priority-bar').forEach(function(bar) {
+                        const width = bar.getAttribute('data-width');
+                        if (width) {
+                            bar.style.width = width;
+                        }
+                    });
+                }, 100);
+            }
+        }
+    }
+
+    function toggleFeatures(branchId) {
+        const hiddenFeatures = document.getElementById('hidden-features-recommended-' + branchId);
+        const toggleBtn = document.querySelector('#features-recommended-' + branchId + ' .features-toggle-btn');
+        
+        if (hiddenFeatures) {
+            hiddenFeatures.classList.toggle('hidden');
+            hiddenFeatures.classList.toggle('show');
+            
+            if (toggleBtn) {
+                if (hiddenFeatures.classList.contains('show')) {
+                    toggleBtn.textContent = 'Show less';
+                } else {
+                    const totalHidden = hiddenFeatures.querySelectorAll('span').length;
+                    toggleBtn.textContent = '+' + totalHidden + ' more';
+                }
+            }
+        }
+    }
+
+    function toggleTopFeatures(branchId) {
+        const hiddenFeatures = document.getElementById('hidden-features-top-' + branchId);
+        const toggleBtn = document.querySelector('#features-top-' + branchId + ' .features-toggle-btn');
+        
+        if (hiddenFeatures) {
+            hiddenFeatures.classList.toggle('hidden');
+            hiddenFeatures.classList.toggle('show');
+            
+            if (toggleBtn) {
+                if (hiddenFeatures.classList.contains('show')) {
+                    toggleBtn.textContent = 'Show less';
+                } else {
+                    const totalHidden = hiddenFeatures.querySelectorAll('span').length;
+                    toggleBtn.textContent = '+' + totalHidden + ' more';
+                }
+            }
+        }
+    }
+
+    // ================================================================
+    // LOCATION HANDLER
     // ================================================================
     
     function getCustomerLocation() {
@@ -1565,11 +1615,27 @@
                 // Ignore
             }
         }
+
+        setTimeout(function() {
+            const content = document.getElementById('priorityBreakdownContent');
+            if (content && !content.classList.contains('hidden')) {
+                document.querySelectorAll('.priority-bar').forEach(function(bar) {
+                    const width = bar.getAttribute('data-width');
+                    if (width) {
+                        bar.style.width = width;
+                    }
+                });
+            }
+        }, 500);
     });
 
     // Attach to window
     window.getCustomerLocation = getCustomerLocation;
     window.toggleLocationDropdown = toggleLocationDropdown;
     window.clearCustomerLocation = clearCustomerLocation;
-    </script>
-    @endpush
+    window.togglePriorityBreakdown = togglePriorityBreakdown;
+    window.toggleFeatures = toggleFeatures;
+    window.toggleTopFeatures = toggleTopFeatures;
+    window.clearSearch = clearSearch;
+</script>
+@endpush

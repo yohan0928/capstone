@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Owner;
 
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\Booking;
+use App\Models\BookingPayment;
 use App\Models\Ingredient;
 use App\Models\InventoryTransaction;
+use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\RewardRedemption;
 use Illuminate\Http\Request;
@@ -16,6 +20,18 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class BranchReportController extends Controller
 {
+    /**
+     * Payment method labels, keyed by the integer stored on
+     * booking_payments.payment_method / order_payments.payment_method
+     * 0=cash, 1=gcash, 2=debit-card, 3=pay-later
+     */
+    private const PAYMENT_METHOD_LABELS = [
+        0 => 'Cash',
+        1 => 'GCash',
+        2 => 'Debit Card',
+        3 => 'Pay Later',
+    ];
+
     public function index(Request $request)
     {
         $branches = Branch::where('active', 1)
@@ -128,7 +144,9 @@ class BranchReportController extends Controller
             $orderRev   = (float) ($o->order_revenue ?? 0);
             $rewardDiscount = (float) ($r->total_discount_amount ?? 0);
             
+            // Net Revenue = Total Revenue - Reward Discounts
             $totalRevenue = $bookingRev + $orderRev;
+            $netRevenue = $totalRevenue - $rewardDiscount;
             
             return [
                 'branch_name'          => $b->branch_name ?? $o->branch_name ?? ($r->branch->branch_name ?? 'Unknown'),
@@ -136,6 +154,7 @@ class BranchReportController extends Controller
                 'order_revenue'        => number_format($orderRev, 2, '.', ''),
                 'reward_discount'      => number_format($rewardDiscount, 2, '.', ''),
                 'total_revenue'        => number_format($totalRevenue, 2, '.', ''),
+                'net_revenue'          => number_format($netRevenue, 2, '.', ''),
                 'total_bookings'       => (int) ($b->total_bookings ?? 0),
                 'total_orders'         => (int) ($o->total_orders ?? 0),
                 'total_redemptions'    => (int) ($r->total_redemptions ?? 0),
@@ -148,16 +167,212 @@ class BranchReportController extends Controller
         $grandTotalOrders = $byBranch->sum(fn ($r) => $r['total_orders']);
         $grandTotalRedemptions = $byBranch->sum(fn ($r) => $r['total_redemptions']);
         $grandTotalRewardDiscount = $byBranch->sum(fn ($r) => (float) $r['reward_discount']);
+        $grandTotalNetRevenue = $byBranch->sum(fn ($r) => (float) $r['net_revenue']);
 
         return response()->json([
-            'success'              => true,
-            'total_revenue'        => number_format($grandTotalRevenue, 2, '.', ''),
-            'total_bookings'       => $grandTotalBookings,
-            'total_orders'         => $grandTotalOrders,
-            'total_redemptions'    => $grandTotalRedemptions,
+            'success'               => true,
+            'total_revenue'         => number_format($grandTotalRevenue, 2, '.', ''),
+            'total_net_revenue'     => number_format($grandTotalNetRevenue, 2, '.', ''),
+            'total_bookings'        => $grandTotalBookings,
+            'total_orders'          => $grandTotalOrders,
+            'total_redemptions'     => $grandTotalRedemptions,
             'total_reward_discount' => number_format($grandTotalRewardDiscount, 2, '.', ''),
-            'by_branch'            => $byBranch,
+            'by_branch'             => $byBranch,
+
+            // ── payment method, service popularity, orders, products sold ──
+            'payment_methods'       => $this->paymentMethodBreakdown($dateFrom, $dateTo, $branchId),
+            'service_breakdown'     => $this->serviceBreakdown($dateFrom, $dateTo, $branchId),
+            'orders'                => $this->ordersBreakdown($dateFrom, $dateTo, $branchId),
+            'products_sold'         => $this->productsSold($dateFrom, $dateTo, $branchId),
         ]);
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  PAYMENT METHOD BREAKDOWN (bookings + orders combined)
+    // ════════════════════════════════════════════════════════════════════
+    private function paymentMethodBreakdown($dateFrom, $dateTo, $branchId = null)
+    {
+        $bookingPayments = DB::table('booking_payments')
+            ->whereBetween('date_created', [$dateFrom, $dateTo])
+            ->where('payment_status', 1)
+            ->where('active', 1)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->select('payment_method', DB::raw('COUNT(*) as cnt'), DB::raw('SUM(total_amount) as total'))
+            ->groupBy('payment_method')
+            ->get();
+
+        $orderPayments = DB::table('order_payments')
+            ->whereBetween('date_created', [$dateFrom, $dateTo])
+            ->where('order_payment_status', 1)
+            ->where('active', 1)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->select('payment_method', DB::raw('COUNT(*) as cnt'), DB::raw('SUM(total_amount) as total'))
+            ->groupBy('payment_method')
+            ->get();
+
+        $merged = [];
+        foreach ([$bookingPayments, $orderPayments] as $set) {
+            foreach ($set as $row) {
+                $key = (int) $row->payment_method;
+                if (!isset($merged[$key])) {
+                    $merged[$key] = ['count' => 0, 'total' => 0.0];
+                }
+                $merged[$key]['count'] += (int) $row->cnt;
+                $merged[$key]['total'] += (float) $row->total;
+            }
+        }
+
+        $result = [];
+        foreach ($merged as $method => $data) {
+            $result[] = [
+                'method'       => self::PAYMENT_METHOD_LABELS[$method] ?? 'Unknown',
+                'payments'     => $data['count'],
+                'total_amount' => number_format($data['total'], 2, '.', ''),
+            ];
+        }
+
+        usort($result, fn ($a, $b) => $b['payments'] <=> $a['payments']);
+
+        return $result;
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  SERVICE POPULARITY (bookings — walk-in + online, by category/service)
+    // ════════════════════════════════════════════════════════════════════
+    private function serviceBreakdown($dateFrom, $dateTo, $branchId = null)
+    {
+        $bookingQuery = Booking::with(['serviceCategory', 'serviceName'])
+            ->whereBetween('booking_date', [$dateFrom, $dateTo])
+            ->where('active', 1)
+            ->whereIn('booking_status', [1, 4]); // confirmed + completed
+
+        if ($branchId) {
+            $bookingQuery->where('branch_id', $branchId);
+        }
+
+        $bookings = $bookingQuery->get();
+
+        $paymentTotals = BookingPayment::whereIn('booking_id', $bookings->pluck('id'))
+            ->where('payment_status', 1)
+            ->where('active', 1)
+            ->select('booking_id', DB::raw('SUM(total_amount) as total'))
+            ->groupBy('booking_id')
+            ->pluck('total', 'booking_id');
+
+        $grouped = [];
+        foreach ($bookings as $booking) {
+            $category = $booking->serviceCategory->service_category ?? 'Uncategorized';
+            $service  = $booking->serviceName->service_name ?? 'Unknown';
+            $key      = $category . '|' . $service;
+
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'category' => $category,
+                    'service'  => $service,
+                    'hours'    => 0.0,
+                    'revenue'  => 0.0,
+                ];
+            }
+
+            $grouped[$key]['hours']   += (float) $booking->computed_total_duration;
+            $grouped[$key]['revenue'] += (float) ($paymentTotals[$booking->id] ?? 0);
+        }
+
+        $result = array_values($grouped);
+        usort($result, fn ($a, $b) => $b['hours'] <=> $a['hours']);
+
+        foreach ($result as &$r) {
+            $r['hours']   = round($r['hours'], 1);
+            $r['revenue'] = number_format($r['revenue'], 2, '.', '');
+        }
+        unset($r);
+
+        return $result;
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  ORDERS BREAKDOWN (with line items for the "view details" action)
+    // ════════════════════════════════════════════════════════════════════
+    private function ordersBreakdown($dateFrom, $dateTo, $branchId = null)
+    {
+        $orderQuery = Order::with(['branch', 'items.product', 'payments'])
+            ->whereBetween('date_created', [$dateFrom, $dateTo])
+            ->where('active', 1)
+            ->latest('date_created');
+
+        if ($branchId) {
+            $orderQuery->where('branch_id', $branchId);
+        }
+
+        $orders = $orderQuery->get();
+
+        return $orders->map(function ($order) {
+            $payment = $order->payments->firstWhere('order_payment_status', 1)
+                ?? $order->payments->first();
+
+            return [
+                'order_ref_no'   => $order->order_ref_no,
+                'branch_name'    => $order->branch->branch_name ?? '—',
+                'date'           => optional($order->date_created)->format('M d, Y h:i A'),
+                'payment_method' => $payment
+                    ? (self::PAYMENT_METHOD_LABELS[(int) $payment->payment_method] ?? 'Unknown')
+                    : '—',
+                'items_qty'      => (int) $order->items->sum('quantity'),
+                'total_amount'   => $payment
+                    ? number_format($payment->total_amount, 2, '.', '')
+                    : number_format($order->items->sum('sub_total'), 2, '.', ''),
+                'items' => $order->items->map(fn ($i) => [
+                    'product_name'  => $i->product->product_name ?? '—',
+                    'quantity'      => (int) $i->quantity,
+                    'selling_price' => number_format($i->selling_price, 2, '.', ''),
+                    'sub_total'     => number_format($i->sub_total, 2, '.', ''),
+                ])->values(),
+            ];
+        })->values();
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    //  PRODUCTS SOLD (RTD/Package + MTO)
+    // ════════════════════════════════════════════════════════════════════
+    private function productsSold($dateFrom, $dateTo, $branchId = null)
+    {
+        $items = OrderItem::with('product')
+            ->where('active', 1)
+            ->where('order_item_status', 1) // bought
+            ->whereHas('order', function ($q) use ($dateFrom, $dateTo, $branchId) {
+                $q->whereBetween('date_created', [$dateFrom, $dateTo])->where('active', 1);
+                if ($branchId) {
+                    $q->where('branch_id', $branchId);
+                }
+            })
+            ->get();
+
+        $grouped = [];
+        foreach ($items as $item) {
+            $productId = $item->product_id;
+
+            if (!isset($grouped[$productId])) {
+                $grouped[$productId] = [
+                    'product'  => $item->product->product_name ?? 'Unknown',
+                    'type'     => $item->product->product_type ?? 'unknown',
+                    'quantity' => 0,
+                    'revenue'  => 0.0,
+                ];
+            }
+
+            $grouped[$productId]['quantity'] += (int) $item->quantity;
+            $grouped[$productId]['revenue']  += (float) $item->sub_total;
+        }
+
+        $result = array_values($grouped);
+        usort($result, fn ($a, $b) => $b['quantity'] <=> $a['quantity']);
+
+        foreach ($result as &$r) {
+            $r['revenue'] = number_format($r['revenue'], 2, '.', '');
+        }
+        unset($r);
+
+        return $result;
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -439,6 +654,7 @@ class BranchReportController extends Controller
             $rewardDiscount = (float) ($r->total_discount_amount ?? 0);
             
             $totalRevenue = $bookingRev + $orderRev;
+            $netRevenue = $totalRevenue - $rewardDiscount;
             
             return [
                 'branch_name'          => $b->branch_name ?? $o->branch_name ?? ($r->branch->branch_name ?? 'Unknown'),
@@ -446,6 +662,7 @@ class BranchReportController extends Controller
                 'order_revenue'        => $orderRev,
                 'reward_discount'      => $rewardDiscount,
                 'total_revenue'        => $totalRevenue,
+                'net_revenue'          => $netRevenue,
                 'total_bookings'       => (int) ($b->total_bookings ?? 0),
                 'total_orders'         => (int) ($o->total_orders ?? 0),
                 'total_redemptions'    => (int) ($r->total_redemptions ?? 0),
@@ -458,14 +675,22 @@ class BranchReportController extends Controller
         $grandTotalOrders = $byBranch->sum(fn ($r) => $r['total_orders']);
         $grandTotalRedemptions = $byBranch->sum(fn ($r) => $r['total_redemptions']);
         $grandTotalRewardDiscount = $byBranch->sum(fn ($r) => $r['reward_discount']);
+        $grandTotalNetRevenue = $byBranch->sum(fn ($r) => $r['net_revenue']);
 
         return [
             'by_branch' => $byBranch,
             'total_revenue' => $grandTotalRevenue,
+            'total_net_revenue' => $grandTotalNetRevenue,
             'total_bookings' => $grandTotalBookings,
             'total_orders' => $grandTotalOrders,
             'total_redemptions' => $grandTotalRedemptions,
             'total_reward_discount' => $grandTotalRewardDiscount,
+
+            // ── same breakdowns, available to the PDF view too ──
+            'payment_methods'   => $this->paymentMethodBreakdown($dateFrom, $dateTo, $branchId),
+            'service_breakdown' => $this->serviceBreakdown($dateFrom, $dateTo, $branchId),
+            'orders'            => $this->ordersBreakdown($dateFrom, $dateTo, $branchId),
+            'products_sold'     => $this->productsSold($dateFrom, $dateTo, $branchId),
         ];
     }
 
@@ -732,6 +957,8 @@ class BranchReportController extends Controller
                     'unit'           => $unit,
                     'reason'         => $reason,
                     'note'           => $item->note,
+                    'product_category'  => !$isIngredient ? ($item->product->product_category ?? null) : null,
+
                 ];
             });
         })->values();

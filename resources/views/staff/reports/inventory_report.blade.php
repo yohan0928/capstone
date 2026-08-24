@@ -316,7 +316,7 @@
     </template>
 
     {{-- ══════════════════════════════════════════
-         TRANSACTION LOG
+         TRANSACTION LOG  (with pagination + expandable item rows)
     ══════════════════════════════════════════════ --}}
     <div x-show="byBranch.length" class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -360,9 +360,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed By</th>
-                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
+                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                     </tr>
                 </thead>
 
@@ -383,38 +382,34 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold"
                                     :class="txn.type === 'stock_in' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'"
-                                    x-text="(txn.type === 'stock_in' ? '+' : '−') + (txn.total_quantity ?? 0)"></span>
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <template x-if="txn.type === 'stock_out' && txn.reason">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700"
-                                        x-text="reasonLabel(txn.reason)"></span>
-                                </template>
-                                <template x-if="!(txn.type === 'stock_out' && txn.reason)">
-                                    <span class="text-xs text-gray-400">—</span>
-                                </template>
+                                    x-text="(txn.type === 'stock_in' ? '+' : '−') + txnDisplayQty(txn)"></span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700" x-text="txn.processed_by ?? '—'"></td>
                             <td class="px-6 py-4 whitespace-nowrap text-center">
-                                <button @click="toggleTxnRow(txn.transaction_no)"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
-                                    :class="expandedTxnRows[txn.transaction_no]
-                                        ? 'bg-[#7F5539] text-white border-[#7F5539]'
-                                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'">
-                                    <span x-text="(txn.items_count ?? itemsByTxn(txn.transaction_no).length) + ' item(s)'"></span>
-                                    <svg class="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200"
-                                        :class="expandedTxnRows[txn.transaction_no] ? 'rotate-180' : ''"
-                                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    </svg>
-                                </button>
+                                <div class="relative group inline-block">
+                                    <button @click="toggleTxnRow(txn.transaction_no)"
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
+                                        :class="expandedTxnRows[txn.transaction_no]
+                                            ? 'bg-[#7F5539] text-white border-[#7F5539]'
+                                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'">
+                                        <svg class="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200"
+                                            :class="expandedTxnRows[txn.transaction_no] ? 'rotate-180' : ''"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </button>
+
+                                    <!-- Tooltip -->
+                                    <span class="absolute -top-9 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10"
+                                        x-text="'View ' + itemsByTxn(txn.transaction_no).length + ' item(s)'"></span>
+                                </div>
                             </td>
                         </tr>
 
                         <tr x-show="expandedTxnRows[txn.transaction_no]" x-cloak>
-                            <td colspan="8" class="px-6 pb-4 pt-0 bg-[#faf7f4]">
+                            <td colspan="7" class="px-6 pb-4 pt-0 bg-[#faf7f4]">
                                 <div class="rounded-lg border border-gray-200 overflow-hidden bg-white mt-1">
                                     <table class="min-w-full text-xs">
                                         <thead class="bg-gray-100">
@@ -495,6 +490,7 @@
 document.addEventListener('alpine:init', () => {
     Alpine.data('inventoryReportData', () => ({
 
+        // ── Raw data ──────────────────────────────────────────
         byBranch:  [],
         txnLog:    [],
         itemsLog:  [],
@@ -502,6 +498,7 @@ document.addEventListener('alpine:init', () => {
         dateError: '',
         activePreset: 'week',
 
+        // ── Transaction log tab + pagination ─────────────────
         activeTxnTab: 'all',
         txnTabs: [
             { key: 'all',       label: 'All' },
@@ -512,20 +509,25 @@ document.addEventListener('alpine:init', () => {
         txnPerPage:        15,
         txnPagination:     { current_page: 1, last_page: 1, from: 0, to: 0, total: 0 },
         txnPaginationLinks: [],
+
+        // ── Expandable transaction rows ───────────────────────
         expandedTxnRows: {},
 
         filters: { date_from: '', date_to: '' },
 
+        // ── Computed: filtered transaction log ────────────────
         get filteredTxnLog() {
             if (this.activeTxnTab === 'all') return this.txnLog;
             return this.txnLog.filter(t => t.type === this.activeTxnTab);
         },
 
+        // ── Computed: paginated slice of transaction log ───────
         get pagedTxnLog() {
             const start = (this.txnCurrentPage - 1) * this.txnPerPage;
             return this.filteredTxnLog.slice(start, start + this.txnPerPage);
         },
 
+        // ── Computed: global summary ──────────────────────────
         get summary() {
             if (!this.byBranch.length) {
                 return { beginning_balance: 0, total_stock_in: 0, total_stock_out: 0, ending_balance: 0, stock_in_txn_count: 0 };
@@ -542,6 +544,8 @@ document.addEventListener('alpine:init', () => {
         get netMovement() {
             return (this.summary.total_stock_in ?? 0) - (this.summary.total_stock_out ?? 0);
         },
+
+        // ── Helpers ──────────────────────────────────────────
 
         flowBarWidth(branch) {
             const inQty  = branch.total_stock_in  ?? 0;
@@ -576,6 +580,8 @@ document.addEventListener('alpine:init', () => {
             return result;
         },
 
+        // ── Transaction log pagination ────────────────────────
+
         updateTxnPaginationLinks() {
             const total    = this.filteredTxnLog.length;
             const lastPage = Math.max(1, Math.ceil(total / this.txnPerPage));
@@ -597,8 +603,27 @@ document.addEventListener('alpine:init', () => {
             this.updateTxnPaginationLinks();
         },
 
+        // ── Item expand/collapse ──────────────────────────────
+
         itemsByTxn(transactionNo) {
             return this.itemsLog.filter(i => i.transaction_no === transactionNo);
+        },
+
+        // Displayed Qty for a transaction row.
+        // - Stock In: unchanged, uses the backend's total_quantity (real units received).
+        // - Stock Out: a COUNT of line items, not a sum of quantities — ingredients are
+        //   measured in mixed units (g, pcs, etc.) so their quantity values aren't
+        //   meaningful to add together. Each included line (regular RTD/packaged product,
+        //   any ingredient, or an MTO-consumed ingredient) counts as 1 "used" item,
+        //   e.g. Plastic Cup -1, Coffee Powder -1, Plastic Straw -1.
+        //   MTO drinks (product rows measured in "cup") are excluded — they're what
+        //   triggered the ingredient consumption, not a distinct stocked-out item.
+        txnDisplayQty(txn) {
+            if (txn.type !== 'stock_out') {
+                return txn.total_quantity ?? 0;
+            }
+            const items = this.itemsByTxn(txn.transaction_no);
+            return items.filter(i => !(i.item_type === 'product' && i.unit === 'cup')).length;
         },
 
         toggleTxnRow(transactionNo) {
@@ -608,8 +633,11 @@ document.addEventListener('alpine:init', () => {
             };
         },
 
+        // ── Lifecycle ─────────────────────────────────────────
+
         init() {
             this.setPreset('week');
+            // Auto-load report on page load
             this.fetchReport();
         },
 
@@ -645,8 +673,10 @@ document.addEventListener('alpine:init', () => {
         },
 
         reasonLabel(r) {
-            return { expired: 'Expired', damaged: 'Damaged', pulled_out: 'Pulled out', sold: 'Sold' }[r] ?? r ?? '—';
+            return { expired: 'Expired', damaged: 'Damaged', pulled_out: 'Pulled out', sold: 'Sold', used_in_mto: 'MTO Ingredient' }[r] ?? r ?? '—';
         },
+
+        // ── Data fetch ────────────────────────────────────────
 
         async fetchReport() {
             if (this.dateError) return;
@@ -677,6 +707,7 @@ document.addEventListener('alpine:init', () => {
                     this.txnLog   = data.transactions ?? [];
                     this.itemsLog = data.items        ?? [];
 
+                    // Reset transaction pagination + expand state
                     this.txnCurrentPage  = 1;
                     this.expandedTxnRows = {};
                     this.updateTxnPaginationLinks();
@@ -690,17 +721,19 @@ document.addEventListener('alpine:init', () => {
             }
         },
 
+        // ── Export PDF ────────────────────────────────────────
+
         exportPDF() {
             if (!this.byBranch.length) {
                 alert('No data to export. Please generate the report first.');
                 return;
             }
-            
+
             const params = new URLSearchParams({
                 date_from: this.filters.date_from,
                 date_to: this.filters.date_to,
             });
-            
+
             window.open(`{{ route('sub_two.reports.export_inventory_pdf') }}?${params}`, '_blank');
         },
 
@@ -709,6 +742,11 @@ document.addEventListener('alpine:init', () => {
 </script>
 
 <style>
+    .modal-open { overflow: hidden; }
+    .overflow-y-auto::-webkit-scrollbar { width: 6px; }
+    .overflow-y-auto::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+    .overflow-y-auto::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+    .overflow-y-auto::-webkit-scrollbar-thumb:hover { background: #555; }
     [x-cloak] { display: none !important; }
 </style>
 @endsection

@@ -215,6 +215,12 @@
             color: #16a34a;
             font-weight: 700;
         }
+        .ledger-dash {
+            color: #ccc;
+        }
+        .mto-subrow td {
+            background: #faf5ff;
+        }
         .no-data {
             padding: 10px;
             text-align: center;
@@ -398,6 +404,15 @@
     $branchesArray = isset($inventoryData['by_branch']) && $inventoryData['by_branch'] instanceof \Illuminate\Support\Collection
         ? $inventoryData['by_branch']->toArray()
         : (isset($inventoryData['by_branch']) ? $inventoryData['by_branch'] : []);
+
+    // Human-readable labels for stock-out reasons (used_in_mto -> "MTO Ingredient")
+    $reasonLabels = [
+        'expired'     => 'Expired',
+        'damaged'     => 'Damaged',
+        'pulled_out'  => 'Pulled out',
+        'sold'        => 'Sold',
+        'used_in_mto' => 'MTO Ingredient',
+    ];
 @endphp
 
 @foreach($branchesArray as $branchRow)
@@ -455,17 +470,24 @@
                         <tbody>
                             @foreach($branchTxnsIn as $txn)
                                 @php
-                                    $txnItems = array_filter($branchItemsIn, function($i) use ($txn) {
+                                    $txnItems = array_values(array_filter($branchItemsIn, function($i) use ($txn) {
                                         return ($i['transaction_no'] ?? '') === $txn['transaction_no'];
-                                    });
+                                    }));
                                 @endphp
                                 @if(count($txnItems) > 0)
-                                    @foreach($txnItems as $item)
+                                    @foreach($txnItems as $idx => $item)
+                                        @php $isFirstRow = $idx === 0; @endphp
                                         <tr>
-                                            <td class="ledger-txn-no">{{ $txn['transaction_no'] }}</td>
-                                            <td>{{ \Carbon\Carbon::parse($txn['created_at'])->format('M d, Y') }}<br>{{ \Carbon\Carbon::parse($txn['created_at'])->format('h:i A') }}</td>
-                                            <td class="ledger-in">+{{ $txn['total_quantity'] ?? 0 }}</td>
-                                            <td>{{ $txn['processed_by'] ?? '-' }}</td>
+                                            <td class="ledger-txn-no">{{ $isFirstRow ? $txn['transaction_no'] : '-' }}</td>
+                                            <td class="{{ $isFirstRow ? '' : 'ledger-dash' }}">
+                                                @if($isFirstRow)
+                                                    {{ \Carbon\Carbon::parse($txn['created_at'])->format('M d, Y') }}<br>{{ \Carbon\Carbon::parse($txn['created_at'])->format('h:i A') }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td class="{{ $isFirstRow ? 'ledger-in' : 'ledger-dash' }}">{{ $isFirstRow ? '+' . ($txn['total_quantity'] ?? 0) : '-' }}</td>
+                                            <td class="{{ $isFirstRow ? '' : 'ledger-dash' }}">{{ $isFirstRow ? ($txn['processed_by'] ?? '-') : '-' }}</td>
                                             <td>
                                                 <span class="badge {{ $item['item_type'] === 'ingredient' ? 'badge-purple' : 'badge-blue' }}">
                                                     {{ $item['item_type'] === 'ingredient' ? 'Ingredient' : 'Product' }}
@@ -521,27 +543,73 @@
                         <tbody>
                             @foreach($branchTxnsOut as $txn)
                                 @php
-                                    $txnItems = array_filter($branchItemsOut, function($i) use ($txn) {
+                                    $txnItems = array_values(array_filter($branchItemsOut, function($i) use ($txn) {
                                         return ($i['transaction_no'] ?? '') === $txn['transaction_no'];
-                                    });
+                                    }));
+
+                                    // MTO ingredient consumption rows are pulled out and re-appended
+                                    // as sub-rows underneath the product/other rows of the same transaction.
+                                    $mtoIngredientItems = array_values(array_filter($txnItems, function($i) {
+                                        return ($i['item_type'] ?? '') === 'ingredient' && ($i['reason'] ?? '') === 'used_in_mto';
+                                    }));
+                                    $mainItems = array_values(array_filter($txnItems, function($i) {
+                                        return !(($i['item_type'] ?? '') === 'ingredient' && ($i['reason'] ?? '') === 'used_in_mto');
+                                    }));
+                                    $isMtoTxn = count($mtoIngredientItems) > 0;
+                                    $orderedItems = array_merge($mainItems, $mtoIngredientItems);
+
+                                    // Recompute the displayed Total Qty for this transaction as a COUNT
+                                    // of line items, not a sum of quantities — ingredients are measured
+                                    // in mixed units (g, pcs, etc.) so their quantity values aren't
+                                    // meaningful to add together. Each included line (regular RTD/packaged
+                                    // product, any ingredient, or an MTO-consumed ingredient) counts as 1
+                                    // "used" item, e.g. Plastic Cup -1, Coffee Powder -1, Plastic Straw -1.
+                                    // MTO drinks (product rows measured in "cup") are excluded — they're
+                                    // what triggered the ingredient consumption, not a distinct
+                                    // stocked-out item. (MTO products still carry a normal reason like
+                                    // "Sold", so a missing-reason check won't catch them — unit is the
+                                    // reliable signal.)
+                                    $displayTotalQty = count(array_filter($orderedItems, function ($i) {
+                                        $isMtoProductLine = ($i['item_type'] ?? '') === 'product' && ($i['unit'] ?? '') === 'cup';
+                                        return !$isMtoProductLine;
+                                    }));
                                 @endphp
-                                @if(count($txnItems) > 0)
-                                    @foreach($txnItems as $item)
-                                        <tr>
-                                            <td class="ledger-txn-no">{{ $txn['transaction_no'] }}</td>
-                                            <td>{{ \Carbon\Carbon::parse($txn['created_at'])->format('M d, Y') }}<br>{{ \Carbon\Carbon::parse($txn['created_at'])->format('h:i A') }}</td>
-                                            <td class="ledger-out">-{{ $txn['total_quantity'] ?? 0 }}</td>
-                                            <td>{{ $txn['processed_by'] ?? '-' }}</td>
+                                @if(count($orderedItems) > 0)
+                                    @foreach($orderedItems as $idx => $item)
+                                        @php
+                                            $isFirstRow = $idx === 0;
+                                            $isMtoIngredientRow = ($item['item_type'] ?? '') === 'ingredient' && ($item['reason'] ?? '') === 'used_in_mto';
+                                            // Only the actual MTO drink row (product measured in "cup")
+                                            // gets its reason hidden — other products in the same
+                                            // transaction (e.g. plain RTD items) keep their real reason.
+                                            $isMtoProductRow = ($item['item_type'] ?? '') === 'product' && ($item['unit'] ?? '') === 'cup';
+                                            $reasonLabel = $reasonLabels[$item['reason'] ?? ''] ?? ucfirst(str_replace('_', ' ', $item['reason'] ?? ''));
+                                        @endphp
+                                        <tr @if($isMtoIngredientRow) class="mto-subrow" @endif>
+                                            <td class="ledger-txn-no">{{ $isFirstRow ? $txn['transaction_no'] : '-' }}</td>
+                                            <td class="{{ $isFirstRow ? '' : 'ledger-dash' }}">
+                                                @if($isFirstRow)
+                                                    {{ \Carbon\Carbon::parse($txn['created_at'])->format('M d, Y') }}<br>{{ \Carbon\Carbon::parse($txn['created_at'])->format('h:i A') }}
+                                                @else
+                                                    -
+                                                @endif
+                                            </td>
+                                            <td class="{{ $isFirstRow ? 'ledger-out' : 'ledger-dash' }}">{{ $isFirstRow ? '-' . $displayTotalQty : '-' }}</td>
+                                            <td class="{{ $isFirstRow ? '' : 'ledger-dash' }}">{{ $isFirstRow ? ($txn['processed_by'] ?? '-') : '-' }}</td>
                                             <td>
                                                 <span class="badge {{ $item['item_type'] === 'ingredient' ? 'badge-purple' : 'badge-blue' }}">
                                                     {{ $item['item_type'] === 'ingredient' ? 'Ingredient' : 'Product' }}
                                                 </span>
                                             </td>
-                                            <td>{{ $item['item_name'] ?? '-' }}</td>
+                                            <td>{{ $isMtoIngredientRow ? ($item['item_name'] ?? '-') : ($item['item_name'] ?? '-') }}</td>
                                             <td class="ledger-out">-{{ $item['quantity'] ?? 0 }}{{ $item['unit'] ? ' ' . $item['unit'] : '' }}</td>
                                             <td>
-                                                @if(!empty($item['reason']))
-                                                    <span class="badge badge-gray">{{ ucfirst($item['reason']) }}</span>
+                                                @if($isMtoProductRow)
+                                                    -
+                                                @elseif($isMtoIngredientRow)
+                                                    <span class="badge badge-purple">{{ $reasonLabel }}</span>
+                                                @elseif(!empty($item['reason']))
+                                                    <span class="badge badge-gray">{{ $reasonLabel }}</span>
                                                 @else
                                                     <span style="color: #b45309; font-weight: 600;">Not specified</span>
                                                 @endif

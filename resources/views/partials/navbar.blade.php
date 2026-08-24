@@ -266,27 +266,51 @@
                                 clip-rule="evenodd" />
                         </svg>
                     </a>
-
+                
                     <!-- Dropdown menu -->
-                    <ul
-                        class="absolute hidden group-hover:block bg-white shadow-lg rounded-lg w-max top-full left-0 p-2 space-y-1">
+                    <ul class="absolute hidden group-hover:block bg-white shadow-lg rounded-lg w-max top-full left-0 p-2 space-y-1 z-40">
                         <li>
+                            <a href="{{ route('sub_one.inventory.stockInHistory') }}"
+                                class="desktop-link desktop-sub-link block px-4 py-2 text-black font-semibold rounded hover:bg-[#4A2C1D] hover:text-white">
+                                Stock In
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('sub_one.inventory.stockOutHistory') }}"
+                                class="desktop-link desktop-sub-link block px-4 py-2 text-black font-semibold rounded hover:bg-[#4A2C1D] hover:text-white">
+                                Stock Out
+                            </a>
+                        </li>
+                
+                        <li class="border-t border-gray-100 my-1"></li>
+                
+                        {{-- Nested "Manage" flyout submenu --}}
+                        <li class="relative group/manage">
                             <a href="{{ route('sub_one.products.showProduct') }}"
-                                class="desktop-link desktop-sub-link block px-4 py-2 text-black font-semibold rounded hover:bg-[#4A2C1D] hover:text-white">
-                                Products
+                                class="desktop-link desktop-sub-link flex items-center justify-between px-4 py-2 text-black font-semibold rounded hover:bg-[#4A2C1D] hover:text-white">
+                                Manage
+                                <svg class="ml-2 w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd"
+                                        d="M7.21 14.77a.75.75 0 01.02-1.06L10.94 10 7.23 6.29a.75.75 0 111.06-1.06l4.24 4.24a.75.75 0 010 1.06l-4.24 4.24a.75.75 0 01-1.06-.02z"
+                                        clip-rule="evenodd" />
+                                </svg>
                             </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('sub_one.ingredients.showIngredient') }}"
-                                class="desktop-link desktop-sub-link block px-4 py-2 text-black font-semibold rounded hover:bg-[#4A2C1D] hover:text-white">
-                                Ingredients
-                            </a>
-                        </li>
-                        <li>
-                            <a href="{{ route('sub_one.reports.staff_report') }}"
-                                class="desktop-link text-[#7F5539] hover:text-[#4A2C1D] font-semibold border-b-2 border-transparent pb-2 transform transition-all duration-300 hover:border-[#4A2C1D]">
-                                Staff
-                            </a>
+                
+                            <!-- Flyout submenu -->
+                            <ul class="absolute hidden group-hover/manage:block bg-white shadow-lg rounded-lg w-max top-0 left-full ml-1 p-2 space-y-1 z-50">
+                                <li>
+                                    <a href="{{ route('sub_one.products.showProduct') }}"
+                                        class="desktop-link desktop-sub-link block px-4 py-2 text-black font-semibold rounded hover:bg-[#4A2C1D] hover:text-white">
+                                        Products
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{{ route('sub_one.ingredients.showIngredient') }}"
+                                        class="desktop-link desktop-sub-link block px-4 py-2 text-black font-semibold rounded hover:bg-[#4A2C1D] hover:text-white">
+                                        Ingredients
+                                    </a>
+                                </li>
+                            </ul>
                         </li>
                     </ul>
                 </li>
@@ -746,37 +770,46 @@
                 </ul>
             </li>
 
-            <li class="mobile-dropdown">
-                <div class="mobile-link-container !p-0">
-                    <a href="{{ route('sub_one.inventory.index') }}"
-                        class="mobile-link mobile-link-text hover:bg-[#f0f0f0] rounded-l-md" data-main-link="true">
-                        Inventory
-                    </a>
-                    <button type="button"
-                        class="mobile-dropdown-toggle p-3 rounded-r-md focus:outline-none transition-colors">
-                        <svg class="mobile-dropdown-arrow w-4 h-4 text-[#7F5539] transition-transform duration-300"
-                            fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z"
-                                clip-rule="evenodd" />
-                        </svg>
-                    </button>
-                </div>
-                <ul class="mobile-dropdown-content space-y-1">
-                    <li>
-                        <a href="{{ route('sub_one.products.showProduct') }}" class="mobile-link mobile-sub-link-button">
-                            Products
-                        </a>
-                    </li>
+            <li<li class="mobile-dropdown">
+    <div class="mobile-link-container !p-0">
+        <a href="{{ route('sub_one.inventory.index') }}"
+            class="mobile-link mobile-link-text hover:bg-[#f0f0f0] rounded-l-md" data-main-link="true">
+            Inventory
+        </a>
+        <button type="button"
+            class="mobile-dropdown-toggle p-3 rounded-r-md focus:outline-none transition-colors">
+            <svg class="mobile-dropdown-arrow w-4 h-4 text-[#7F5539] transition-transform duration-300"
+                fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                    d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.06z"
+                    clip-rule="evenodd" />
+            </svg>
+        </button>
+    </div>
 
-                    <li>
-                        <a href="{{ route('sub_one.ingredients.showIngredient') }}"
-                            class="mobile-link mobile-sub-link-button">
-                            Ingredients
-                        </a>
-                    </li>
-                </ul>
-            </li>
+    <ul class="mobile-dropdown-content space-y-1">
+        <li>
+            <a href="{{ route('sub_one.inventory.stockInHistory') }}" class="mobile-link mobile-sub-link-button">
+                Stock In
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('sub_one.inventory.stockOutHistory') }}" class="mobile-link mobile-sub-link-button">
+                Stock Out
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('sub_one.products.showProduct') }}" class="mobile-link mobile-sub-link-button">
+                Products
+            </a>
+        </li>
+        <li>
+            <a href="{{ route('sub_one.ingredients.showIngredient') }}" class="mobile-link mobile-sub-link-button">
+                Ingredients
+            </a>
+        </li>
+    </ul>
+</li>
 
             <li class="mobile-dropdown">
                 <div class="mobile-link-container !p-0">
@@ -837,7 +870,7 @@
             </li>
 
             <li>
-                <a href="{{ route('sub_one.reports.staff_report') }}"
+                <a href="{{ route('sub_one.reports.branch_report') }}"
                     class="mobile-link mobile-link-text mobile-link-container hover:bg-[#f0f0f0]">
                     Reports
                 </a>

@@ -143,7 +143,7 @@
         </div>
 
         {{-- Summary Cards --}}
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
             <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex items-center">
                     <div class="flex-shrink-0 bg-[#7F5539]/10 p-3 rounded-lg">
@@ -155,6 +155,20 @@
                         <p class="text-sm font-medium text-gray-600">Total Revenue</p>
                         <p class="text-2xl font-bold text-gray-900"
                             x-text="salesData.total_revenue ? '₱' + Number(salesData.total_revenue).toLocaleString('en', {minimumFractionDigits: 2}) : '—'"></p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-emerald-100 p-3 rounded-lg">
+                        <svg class="h-6 w-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">Net Revenue</p>
+                        <p class="text-2xl font-bold text-emerald-700"
+                            x-text="salesData.total_net_revenue ? '₱' + Number(salesData.total_net_revenue).toLocaleString('en', {minimumFractionDigits: 2}) : '—'"></p>
                     </div>
                 </div>
             </div>
@@ -204,7 +218,7 @@
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                 <div>
                     <h2 class="text-lg font-semibold text-gray-900">Sales by Branch</h2>
-                    <p class="text-sm text-gray-500 mt-1">Booking revenue, order revenue, and reward discounts per branch</p>
+                    <p class="text-sm text-gray-500 mt-1">Booking revenue, order revenue, reward discounts, and net revenue per branch</p>
                 </div>
                 <div class="text-xs text-gray-400" x-show="salesData.by_branch?.length">
                     <span x-text="`${salesData.by_branch?.length || 0} branch(es)`"></span>
@@ -233,13 +247,14 @@
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Order Revenue</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Reward Discount</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Revenue</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-emerald-600 uppercase tracking-wider">Net Revenue</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Bookings</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Orders</th>
                             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Redemptions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        <template x-for="(branch, index) in salesData.by_branch" :key="branch.branch_name">
+                        <template x-for="(branch, index) in salesData.by_branch" :key="branch.branch_name + '-' + index">
                             <tr :class="index % 2 === 0 ? 'bg-white' : 'bg-gray-50'" class="hover:bg-[#7F5539]/5 transition-colors">
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     <div class="flex items-center gap-2">
@@ -256,11 +271,15 @@
                                     x-text="'₱' + Number(branch.booking_revenue).toLocaleString('en', {minimumFractionDigits: 2})"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-right"
                                     x-text="'₱' + Number(branch.order_revenue).toLocaleString('en', {minimumFractionDigits: 2})"></td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 text-right"
-                                    x-text="'₱' + Number(branch.reward_discount).toLocaleString('en', {minimumFractionDigits: 2})"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600 text-right"
+                                    x-text="'- ₱' + Number(branch.reward_discount).toLocaleString('en', {minimumFractionDigits: 2})"></td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right">
                                     <span class="text-sm font-semibold text-gray-900"
                                         x-text="'₱' + Number(branch.total_revenue).toLocaleString('en', {minimumFractionDigits: 2})"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <span class="text-sm font-bold text-emerald-600"
+                                        x-text="'₱' + Number(branch.net_revenue).toLocaleString('en', {minimumFractionDigits: 2})"></span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-center">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
@@ -283,16 +302,247 @@
                                 x-text="'₱' + salesData.by_branch?.reduce((s,b) => s + Number(b.booking_revenue), 0).toLocaleString('en', {minimumFractionDigits: 2})"></td>
                             <td class="px-6 py-4 text-sm text-gray-900 text-right"
                                 x-text="'₱' + salesData.by_branch?.reduce((s,b) => s + Number(b.order_revenue), 0).toLocaleString('en', {minimumFractionDigits: 2})"></td>
-                            <td class="px-6 py-4 text-sm text-emerald-600 text-right"
-                                x-text="'₱' + salesData.by_branch?.reduce((s,b) => s + Number(b.reward_discount), 0).toLocaleString('en', {minimumFractionDigits: 2})"></td>
-                            <td class="px-6 py-4 text-sm font-bold text-[#7F5539] text-right"
+                            <td class="px-6 py-4 text-sm text-red-600 text-right"
+                                x-text="'- ₱' + salesData.by_branch?.reduce((s,b) => s + Number(b.reward_discount), 0).toLocaleString('en', {minimumFractionDigits: 2})"></td>
+                            <td class="px-6 py-4 text-sm font-semibold text-gray-900 text-right"
                                 x-text="'₱' + Number(salesData.total_revenue).toLocaleString('en', {minimumFractionDigits: 2})"></td>
+                            <td class="px-6 py-4 text-sm font-bold text-emerald-700 text-right"
+                                x-text="'₱' + Number(salesData.total_net_revenue).toLocaleString('en', {minimumFractionDigits: 2})"></td>
                             <td class="px-6 py-4 text-sm text-gray-900 text-center" x-text="salesData.total_bookings"></td>
                             <td class="px-6 py-4 text-sm text-gray-900 text-center" x-text="salesData.total_orders"></td>
                             <td class="px-6 py-4 text-sm text-gray-900 text-center" x-text="salesData.total_redemptions"></td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════
+             Payment Method Breakdown
+        ══════════════════════════════════════════════ --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6" x-show="salesData.payment_methods?.length && !isLoading">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Payment Method Breakdown</h2>
+                <p class="text-sm text-gray-500 mt-1">Number of payments and total amount collected per method</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Payments</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="(pm, index) in salesData.payment_methods" :key="pm.method + '-' + index">
+                            <tr :class="index % 2 === 0 ? 'bg-white' : 'bg-gray-50'" class="hover:bg-[#7F5539]/5 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="pm.method"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700" x-text="pm.payments"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right"
+                                    x-text="'₱' + Number(pm.total_amount).toLocaleString('en', {minimumFractionDigits: 2})"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════
+             Most Popular Services (Bookings)
+        ══════════════════════════════════════════════ --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6" x-show="salesData.service_breakdown?.length && !isLoading">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Most Popular Services</h2>
+                <p class="text-sm text-gray-500 mt-1">Walk-in and online bookings, by category and service — sorted by hours spent</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hours Spent</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="(s, index) in salesData.service_breakdown" :key="s.category + '-' + s.service + '-' + index">
+                            <tr :class="index % 2 === 0 ? 'bg-white' : 'bg-gray-50'" class="hover:bg-[#7F5539]/5 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700" x-text="s.category"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="s.service"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-right" x-text="s.hours + ' hr(s)'"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right"
+                                    x-text="'₱' + Number(s.revenue).toLocaleString('en', {minimumFractionDigits: 2})"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════
+             Products Sold (RTD/Package + MTO)
+             FIX: :key now includes the loop index. Two different
+             product_ids can legitimately share the same product
+             name + category (e.g. "Cold Caramel Latte" / "Coffee"
+             appearing twice in the response), which produced a
+             duplicate key and silently broke this x-for block.
+        ══════════════════════════════════════════════ --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6" x-show="salesData.products_sold?.length && !isLoading">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">Products Sold</h2>
+                <p class="text-sm text-gray-500 mt-1">Product performance — sorted by quantity sold</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity Sold</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="(p, index) in salesData.products_sold" :key="p.product + '-' + p.type + '-' + index">
+                            <tr :class="index % 2 === 0 ? 'bg-white' : 'bg-gray-50'" class="hover:bg-[#7F5539]/5 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="p.product"></td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                        x-text="p.type"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center" x-text="p.quantity"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right"
+                                    x-text="'₱' + Number(p.revenue).toLocaleString('en', {minimumFractionDigits: 2})"></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Empty-state fallback so an empty response is visible instead of the card silently vanishing --}}
+            <div x-show="!salesData.products_sold?.length && !isLoading && salesData.total_revenue !== undefined"
+                 class="px-6 py-8 text-center text-sm text-gray-400">
+                No products sold in this period.
+            </div>
+        </div>
+
+        {{-- ══════════════════════════════════════════
+             Orders Breakdown (with expandable item details)
+        ══════════════════════════════════════════════ --}}
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6" x-show="salesData.orders?.length && !isLoading">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-900">Orders Breakdown</h2>
+                    <p class="text-sm text-gray-500 mt-1">All orders in the selected period and branch filter</p>
+                </div>
+                <span class="text-xs text-gray-400" x-text="`${salesData.orders?.length || 0} order(s)`"></span>
+            </div>
+
+            <div x-show="!pagedOrders.length" class="px-6 py-10 text-center text-sm text-gray-400">
+                No orders found for this filter.
+            </div>
+
+            <div class="overflow-x-auto" x-show="pagedOrders.length">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order Ref.</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Branch</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Items Qty</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Amount</th>
+                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                        </tr>
+                    </thead>
+                    <template x-for="(order, index) in pagedOrders" :key="order.order_ref_no + '-' + index">
+                        <tbody>
+                            <tr :class="index % 2 === 0 ? 'bg-white' : 'bg-gray-50'" class="hover:bg-[#7F5539]/5 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="order.order_ref_no"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700" x-text="order.branch_name"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700" x-text="order.date"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700" x-text="order.payment_method"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 text-center" x-text="order.items_qty"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 text-right"
+                                    x-text="'₱' + Number(order.total_amount).toLocaleString('en', {minimumFractionDigits: 2})"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-center relative">
+                                    <button @click="toggleOrder(order.order_ref_no)"
+                                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors"
+                                        :class="expandedOrders[order.order_ref_no]
+                                            ? 'bg-[#7F5539] text-white border-[#7F5539]'
+                                            : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'">
+                                        <span x-text="expandedOrders[order.order_ref_no] ? 'Hide Details' : 'View Details'"></span>
+                                        <svg class="w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200"
+                                            :class="expandedOrders[order.order_ref_no] ? 'rotate-180' : ''"
+                                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        </svg>
+                                    </button>
+                                </td>
+                            </tr>
+
+                            <tr x-show="expandedOrders[order.order_ref_no]" x-cloak>
+                                <td colspan="7" class="px-6 pb-4 pt-0 bg-[#faf7f4]">
+                                    <div class="rounded-lg border border-gray-200 overflow-hidden bg-white mt-1">
+                                        <table class="min-w-full text-xs">
+                                            <thead class="bg-gray-100">
+                                                <tr>
+                                                    <th class="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                                                    <th class="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Qty</th>
+                                                    <th class="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                                                    <th class="px-4 py-2 text-left font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100">
+                                                <template x-for="(item, i) in order.items" :key="i">
+                                                    <tr class="hover:bg-gray-50">
+                                                        <td class="px-4 py-2 text-gray-800" x-text="item.product_name"></td>
+                                                        <td class="px-4 py-2 text-gray-700" x-text="item.quantity"></td>
+                                                        <td class="px-4 py-2 text-gray-700" x-text="'₱' + item.selling_price"></td>
+                                                        <td class="px-4 py-2 text-gray-700" x-text="'₱' + item.sub_total"></td>
+                                                    </tr>
+                                                </template>
+                                                <template x-if="!order.items || !order.items.length">
+                                                    <tr>
+                                                        <td colspan="4" class="px-4 py-4 text-center text-gray-400">No items found for this order.</td>
+                                                    </tr>
+                                                </template>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </template>
+                </table>
+            </div>
+
+            {{-- Orders Pagination --}}
+            <div x-show="orderTotalPages > 1" class="px-4 sm:px-6 py-4 border-t border-gray-200">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="text-sm text-gray-700">
+                        Page <span x-text="orderPage"></span> of <span x-text="orderTotalPages"></span>
+                        &middot; <span x-text="salesData.orders?.length || 0"></span> total order(s)
+                    </div>
+                    <div class="flex flex-wrap justify-center items-center gap-2">
+                        <button @click="orderPage = Math.max(1, orderPage - 1)"
+                            :disabled="orderPage === 1"
+                            class="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Previous
+                        </button>
+                        <button @click="orderPage = Math.min(orderTotalPages, orderPage + 1)"
+                            :disabled="orderPage === orderTotalPages"
+                            class="px-3 py-1 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Next
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -335,16 +585,48 @@ document.addEventListener('alpine:init', () => {
         filters: { date_from: daysAgoStr(6), date_to: todayStr(), branch_id: '' },
         salesData: {},
 
+        // ── Orders Breakdown pagination + expand state ──
+        orderPage:      1,
+        orderPerPage:   10,
+        expandedOrders: {},
+
+        get pagedOrders() {
+            const orders = this.salesData.orders || [];
+            const start  = (this.orderPage - 1) * this.orderPerPage;
+            return orders.slice(start, start + this.orderPerPage);
+        },
+        get orderTotalPages() {
+            return Math.max(1, Math.ceil((this.salesData.orders?.length || 0) / this.orderPerPage));
+        },
+        toggleOrder(ref) {
+            this.expandedOrders = { ...this.expandedOrders, [ref]: !this.expandedOrders[ref] };
+        },
+
         init() {
+            this.setPreset('week');
             // Auto-load report on page load
             this.fetchReport();
         },
 
         setPreset(preset) {
             this.activePreset = preset;
-            this.dateError = '';
-            if (preset === 'week')  { this.filters.date_from = daysAgoStr(6);  this.filters.date_to = todayStr(); }
-            if (preset === 'month') { this.filters.date_from = daysAgoStr(29); this.filters.date_to = todayStr(); }
+            this.dateError    = '';
+            const today = new Date();
+            const fmt   = d => {
+                const y   = d.getFullYear();
+                const m   = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${y}-${m}-${day}`;
+            };
+            if (preset === 'week') {
+                const from = new Date(today); from.setDate(today.getDate() - 6);
+                this.filters.date_from = fmt(from);
+                this.filters.date_to   = fmt(today);
+            } else if (preset === 'month') {
+                const from = new Date(today); from.setDate(today.getDate() - 29);
+                this.filters.date_from = fmt(from);
+                this.filters.date_to   = fmt(today);
+            }
         },
 
         formatDate: fmtDate,
@@ -366,6 +648,9 @@ document.addEventListener('alpine:init', () => {
                 const data = await res.json();
                 if (data.success) {
                     this.salesData = data;
+                    // Reset orders pagination + expand state on every new fetch
+                    this.orderPage = 1;
+                    this.expandedOrders = {};
                 } else {
                     console.error('Sales report failed:', data);
                 }
@@ -378,7 +663,6 @@ document.addEventListener('alpine:init', () => {
 
         exportPDF() {
             if (!this.salesData.by_branch?.length) {
-                // Show a toast or alert
                 alert('No data to export. Please generate the report first.');
                 return;
             }
@@ -389,7 +673,6 @@ document.addEventListener('alpine:init', () => {
                 branch_id: this.filters.branch_id,
             });
             
-            // Open PDF in new tab
             window.open(`{{ route('sub_one.reports.export_sales_pdf') }}?${params}`, '_blank');
         },
     }));

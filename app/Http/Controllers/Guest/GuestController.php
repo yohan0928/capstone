@@ -681,6 +681,12 @@ class GuestController extends Controller
         
         $averageRatings = $homeController->getAverageRatings();
 
+        $averageRatings = array_merge([
+            'service_categories' => collect(),
+            'service_names' => collect(),
+            'branches' => collect(),
+        ], $averageRatings ?? []);
+
         $serviceCategories = ServiceCategory::where('active', 1)
             ->where('service_category_status', 1)
             ->orderBy('service_category')
