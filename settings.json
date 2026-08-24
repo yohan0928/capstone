@@ -1,0 +1,18 @@
+{
+	"css.validate": false,
+	"less.validate": false,
+	"scss.validate": false,
+	"tailwindCSS.includeLanguages": {
+		"blade": "html",
+		"php": "html",
+		"blade.php": "html"
+	},
+	"files.associations": {
+		"*.blade.php": "blade",
+		"*.css": "tailwindcss",
+		"*.php": "html"
+	},
+	"editor.quickSuggestions": {
+		"strings": true
+	}
+}
