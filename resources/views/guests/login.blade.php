@@ -18,30 +18,24 @@
                     class="bg-white rounded-full w-12 h-12 sm:w-14 sm:h-14 
                             flex items-center justify-center overflow-hidden
                             mb-0 md:mb-4 mr-3 md:mr-0">
-                    
+
                     <!-- Responsive optimized image -->
                     <picture>
                         <!-- WebP format for modern browsers -->
-                        <source 
+                        <source
                             srcset="{{ asset('storage/logo-84.webp') }} 1x,
                                     {{ asset('storage/logo-168.webp') }} 2x"
                             type="image/webp">
-                        
+
                         <!-- PNG fallback for older browsers -->
-                        <source 
+                        <source
                             srcset="{{ asset('storage/logo-84.png') }} 1x,
                                     {{ asset('storage/logo-168.png') }} 2x"
                             type="image/png">
-                        
+
                         <!-- Final fallback with proper attributes -->
-                        <img 
-                            src="{{ asset('storage/logo-84.png') }}" 
-                            alt="Linkud Hub Logo" 
-                            class="w-full h-full object-cover"
-                            width="84" 
-                            height="84"
-                            loading="lazy"
-                            decoding="async">
+                        <img src="{{ asset('storage/logo-84.png') }}" alt="Linkud Hub Logo" class="w-full h-full object-cover"
+                            width="84" height="84" loading="lazy" decoding="async">
                     </picture>
                 </div>
 
@@ -56,10 +50,10 @@
             <div class="w-full md:w-1/2 p-8 relative">
                 <!-- X Button -->
                 <a href="{{ route('welcome') }}"
-                   class="absolute top-3 right-3 text-[#7F5539] hover:bg-[#4A2C1D] hover:text-white rounded p-1"
-                   aria-label="Close">
+                    class="absolute top-3 right-3 text-[#7F5539] hover:bg-[#4A2C1D] hover:text-white rounded p-1"
+                    aria-label="Close">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                         stroke="currentColor" class="w-6 h-6">
+                        stroke="currentColor" class="w-6 h-6">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </a>

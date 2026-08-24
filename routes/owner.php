@@ -109,9 +109,11 @@ Route::middleware(['auth:owner', 'prevent_back_history'])->prefix('sub_one')->na
     // Feedback n Reviews
     Route::prefix('feedback')->name('feedback.')->group(function () {
         Route::get('/feedback_n_reviews', [CustomerFeedbacksController::class, 'index'])
-        ->name('index');
+            ->name('index');
         Route::post('/ai-summary', [CustomerFeedbacksController::class, 'generateAISummary'])
-        ->name('ai-summary');
+            ->name('ai-summary');
+        Route::post('/ai-summary-overall', [CustomerFeedbacksController::class, 'generateOverallSummary'])
+            ->name('ai-summary-overall');
     });
 
     // Service Categories
@@ -312,9 +314,15 @@ Route::middleware(['auth:owner', 'prevent_back_history'])->prefix('sub_one')->na
         Route::post('/ajax/{product_ingredient_uuid}/update', [ProductIngredientController::class, 'updateProductIngredientAjax'])->name('updateProductIngredientAjax');
     });
     
-    // Inventory
+   // Inventory
     Route::prefix('inventory')->name('inventory.')->group(function () {
         Route::get('/', [InventoryController::class, 'index'])->name('index');
+        Route::get('/stock-levels', [InventoryController::class, 'stockLevels'])->name('stockLevels');
+        Route::get('/stock-in', [InventoryController::class, 'stockInPage'])->name('stockInPage');
+        Route::get('/stock-out', [InventoryController::class, 'stockOutPage'])->name('stockOutPage');
+        Route::get('/stock-in-history', [InventoryController::class, 'stockInHistory'])->name('stockInHistory');
+        Route::get('/stock-out-history', [InventoryController::class, 'stockOutHistory'])->name('stockOutHistory');
+    
         Route::get('/{uuid}/details', [InventoryController::class, 'details'])->name('details');
         Route::post('/stock-in', [InventoryController::class, 'storeStockIn'])->name('stockIn');
         Route::post('/stock-out', [InventoryController::class, 'storeStockOut'])->name('stockOut');
@@ -322,7 +330,7 @@ Route::middleware(['auth:owner', 'prevent_back_history'])->prefix('sub_one')->na
         Route::patch('/{uuid}/reject', [InventoryController::class, 'reject'])->name('reject');
         Route::get('/{uuid}/data', [InventoryController::class, 'getData'])->name('getData');
     });
-
+    
     // POS System
     Route::prefix('pos')->name('pos.')->group(function () {
         Route::get('/', [PointOfSaleController::class, 'index'])->name('index');
@@ -444,6 +452,8 @@ Route::middleware(['auth:owner', 'prevent_back_history'])->prefix('sub_one')->na
         Route::get('/export-image/{staff_uuid}', [StaffReportController::class, 'exportImage'])->name('export_image');
         Route::get('/feedback-report', [CustomerFeedbacksController::class, 'report'])->name('feedback_report');
         Route::post('/ai-summary', [CustomerFeedbacksController::class, 'generateAISummary'])->name('ai-summary');
+        Route::post('/feedback/ai-summary', [CustomerFeedbacksController::class, 'generateAISummary'])->name('feedback.ai-summary');
+        Route::post('/feedback/ai-summary-overall', [CustomerFeedbacksController::class, 'generateOverallSummary'])->name('feedback.ai-summary-overall');
         Route::get('/inventory-report', [BranchReportController::class, 'index'])->name('inventory_report');
         
         // Loyalty Reports
